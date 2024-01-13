@@ -1,42 +1,4 @@
-import * as userSettings from './settings/userSettings';
 import globalize from './globalize';
-
-export function getSavedQueryKey(modifier) {
-    return window.location.href.split('#')[0] + (modifier || '');
-}
-
-export function loadSavedQueryValues(key, query) {
-    let values = userSettings.get(key);
-
-    if (values) {
-        values = JSON.parse(values);
-        return Object.assign(query, values);
-    }
-
-    return query;
-}
-
-export function saveQueryValues(key, query) {
-    const values = {};
-
-    if (query.SortBy) {
-        values.SortBy = query.SortBy;
-    }
-
-    if (query.SortOrder) {
-        values.SortOrder = query.SortOrder;
-    }
-
-    userSettings.set(key, JSON.stringify(values));
-}
-
-export function saveViewSetting (key, value) {
-    userSettings.set(key + '-_view', value);
-}
-
-export function getSavedView (key) {
-    return userSettings.get(key + '-_view');
-}
 
 export function showLayoutMenu (button, currentLayout, views) {
     let dispatchEvent = true;
@@ -55,7 +17,7 @@ export function showLayoutMenu (button, currentLayout, views) {
         };
     });
 
-    import('../components/actionSheet/actionSheet').then(({default: actionsheet}) => {
+    import('../components/actionSheet/actionSheet').then(({ default: actionsheet }) => {
         actionsheet.show({
             items: menuItems,
             positionTo: button,
@@ -68,10 +30,8 @@ export function showLayoutMenu (button, currentLayout, views) {
                     cancelable: false
                 }));
 
-                if (!dispatchEvent) {
-                    if (window.$) {
-                        $(button).trigger('layoutchange', [id]);
-                    }
+                if (!dispatchEvent && window.$) {
+                    $(button).trigger('layoutchange', [id]);
                 }
             }
         });
@@ -83,16 +43,15 @@ export function getQueryPagingHtml (options) {
     const limit = options.limit;
     const totalRecordCount = options.totalRecordCount;
     let html = '';
-    const recordsEnd = Math.min(startIndex + limit, totalRecordCount);
-    const showControls = limit < totalRecordCount;
+    const recordsStart = totalRecordCount ? startIndex + 1 : 0;
+    const recordsEnd = limit ? Math.min(startIndex + limit, totalRecordCount) : totalRecordCount;
+    const showControls = limit > 0 && limit < totalRecordCount;
 
     html += '<div class="listPaging">';
 
-    if (showControls) {
-        html += '<span style="vertical-align:middle;">';
-        html += globalize.translate('ListPaging', (totalRecordCount ? startIndex + 1 : 0), recordsEnd, totalRecordCount);
-        html += '</span>';
-    }
+    html += '<span style="vertical-align:middle;">';
+    html += globalize.translate('ListPaging', recordsStart, recordsEnd, totalRecordCount);
+    html += '</span>';
 
     if (showControls || options.viewButton || options.filterButton || options.sortButton || options.addLayoutButton) {
         html += '<div style="display:inline-block;">';
@@ -117,14 +76,15 @@ export function getQueryPagingHtml (options) {
         html += '</div>';
     }
 
-    return html += '</div>';
+    html += '</div>';
+    return html;
 }
 
 export function showSortMenu (options) {
     Promise.all([
         import('../components/dialogHelper/dialogHelper'),
         import('../elements/emby-radio/emby-radio')
-    ]).then(([{default: dialogHelper}]) => {
+    ]).then(([{ default: dialogHelper }]) => {
         function onSortByChange() {
             const newValue = this.value;
 
@@ -206,11 +166,6 @@ export function showSortMenu (options) {
 }
 
 const libraryBrowser = {
-    getSavedQueryKey,
-    loadSavedQueryValues,
-    saveQueryValues,
-    saveViewSetting,
-    getSavedView,
     showLayoutMenu,
     getQueryPagingHtml,
     showSortMenu

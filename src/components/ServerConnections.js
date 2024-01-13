@@ -1,7 +1,8 @@
-import { ConnectionManager, Credentials, ApiClient, Events } from 'jellyfin-apiclient';
+import { ConnectionManager, Credentials, ApiClient } from 'jellyfin-apiclient';
 
 import { appHost } from './apphost';
 import Dashboard from '../utils/dashboard';
+import Events from '../utils/events.ts';
 import { setUserInfo } from '../scripts/settings/userSettings';
 import appSettings from '../scripts/settings/appSettings';
 
@@ -58,7 +59,7 @@ class ServerConnections extends ConnectionManager {
         );
 
         apiClient.enableAutomaticNetworking = false;
-        apiClient.manualAddressOnly = true;
+        apiClient.manualAddressOnly = false;
 
         this.addApiClient(apiClient);
 
@@ -85,6 +86,10 @@ class ServerConnections extends ConnectionManager {
         return this.localApiClient;
     }
 
+    /**
+     * Gets the ApiClient that is currently connected.
+     * @returns {ApiClient|undefined} apiClient
+     */
     currentApiClient() {
         let apiClient = this.getLocalApiClient();
 

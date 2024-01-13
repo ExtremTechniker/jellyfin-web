@@ -1,5 +1,5 @@
 import globalize from '../../scripts/globalize';
-import { Events } from 'jellyfin-apiclient';
+import Events from '../../utils/events.ts';
 import serverNotifications from '../../scripts/serverNotifications';
 import loading from '../loading/loading';
 import dom from '../../scripts/dom';
@@ -7,12 +7,10 @@ import recordingHelper from './recordinghelper';
 import '../../elements/emby-button/emby-button';
 import '../../elements/emby-button/paper-icon-button-light';
 import './recordingfields.scss';
-import '../../assets/css/flexstyles.scss';
+import '../../styles/flexstyles.scss';
 import ServerConnections from '../ServerConnections';
 import toast from '../toast/toast';
 import template from './recordingfields.template.html';
-
-/*eslint prefer-const: "error"*/
 
 function loadData(parent, program) {
     if (program.IsSeries) {
@@ -61,40 +59,20 @@ function fetchData(instance) {
 
 function onTimerChangedExternally(e, apiClient, data) {
     const options = this.options;
-    let refresh = false;
 
-    if (data.Id) {
-        if (this.TimerId === data.Id) {
-            refresh = true;
-        }
-    }
-    if (data.ProgramId && options) {
-        if (options.programId === data.ProgramId) {
-            refresh = true;
-        }
-    }
-
-    if (refresh) {
+    if ((data.Id && this.TimerId === data.Id)
+        || (data.ProgramId && options && options.programId === data.ProgramId)
+    ) {
         this.refresh();
     }
 }
 
 function onSeriesTimerChangedExternally(e, apiClient, data) {
     const options = this.options;
-    let refresh = false;
 
-    if (data.Id) {
-        if (this.SeriesTimerId === data.Id) {
-            refresh = true;
-        }
-    }
-    if (data.ProgramId && options) {
-        if (options.programId === data.ProgramId) {
-            refresh = true;
-        }
-    }
-
-    if (refresh) {
+    if ((data.Id && this.SeriesTimerId === data.Id)
+        || (data.ProgramId && options && options.programId === data.ProgramId)
+    ) {
         this.refresh();
     }
 }
@@ -163,7 +141,7 @@ function onManageRecordingClick() {
     }
 
     const self = this;
-    import('./recordingeditor').then(({default: recordingEditor}) => {
+    import('./recordingeditor').then(({ default: recordingEditor }) => {
         recordingEditor.show(self.TimerId, options.serverId, {
             enableCancel: false
         }).then(function () {
@@ -181,7 +159,7 @@ function onManageSeriesRecordingClick() {
 
     const self = this;
 
-    import('./seriesrecordingeditor').then(({default: seriesRecordingEditor}) => {
+    import('./seriesrecordingeditor').then(({ default: seriesRecordingEditor }) => {
         seriesRecordingEditor.show(self.SeriesTimerId, options.serverId, {
 
             enableCancel: false
@@ -213,15 +191,13 @@ function onRecordChange(e) {
                 loading.hide();
             });
         }
-    } else {
-        if (hasEnabledTimer) {
-            loading.show();
-            recordingHelper.cancelTimer(apiClient, this.TimerId, true).then(function () {
-                Events.trigger(self, 'recordingchanged');
-                fetchData(self);
-                loading.hide();
-            });
-        }
+    } else if (hasEnabledTimer) {
+        loading.show();
+        recordingHelper.cancelTimer(apiClient, this.TimerId, true).then(function () {
+            Events.trigger(self, 'recordingchanged');
+            fetchData(self);
+            loading.hide();
+        });
     }
 }
 
@@ -245,13 +221,11 @@ function onRecordSeriesChange(e) {
                 fetchData(self);
             });
         }
-    } else {
-        if (this.SeriesTimerId) {
-            apiClient.cancelLiveTvSeriesTimer(this.SeriesTimerId).then(function () {
-                toast(globalize.translate('RecordingCancelled'));
-                fetchData(self);
-            });
-        }
+    } else if (this.SeriesTimerId) {
+        apiClient.cancelLiveTvSeriesTimer(this.SeriesTimerId).then(function () {
+            toast(globalize.translate('RecordingCancelled'));
+            fetchData(self);
+        });
     }
 }
 

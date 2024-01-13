@@ -4,5 +4,14 @@ export declare global {
     interface Window {
         ApiClient: ApiClient;
         Events: Events;
+        NativeShell: any;
+        Loading: {
+            show();
+            hide();
+        }
+    }
+
+    interface DocumentEventMap {
+        'viewshow': CustomEvent;
     }
 }

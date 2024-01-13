@@ -1,13 +1,15 @@
-import { Events } from 'jellyfin-apiclient';
+import Events from '../utils/events.ts';
 import globalize from '../scripts/globalize';
 import loading from './loading/loading';
 import appSettings from '../scripts/settings/appSettings';
 import { playbackManager } from './playback/playbackmanager';
 import { appHost } from '../components/apphost';
-import { appRouter } from '../components/appRouter';
+import { appRouter } from './router/appRouter';
 import * as inputManager from '../scripts/inputManager';
 import toast from '../components/toast/toast';
 import confirm from '../components/confirm/confirm';
+import * as dashboard from '../utils/dashboard';
+import ServerConnections from '../components/ServerConnections';
 
 // TODO: replace with each plugin version
 const cacheParam = new Date().getTime();
@@ -34,7 +36,7 @@ class PluginManager {
             // translations won't be loaded for skins until needed
             return plugin;
         } else {
-            return await this.#loadStrings(plugin);
+            return this.#loadStrings(plugin);
         }
     }
 
@@ -70,13 +72,13 @@ class PluginManager {
                     throw new TypeError('Plugin definitions in window have to be an (async) function returning the plugin class');
                 }
 
-                const pluginClass = await pluginDefinition();
-                if (typeof pluginClass !== 'function') {
+                const PluginClass = await pluginDefinition();
+                if (typeof PluginClass !== 'function') {
                     throw new TypeError(`Plugin definition doesn't return a class for '${pluginSpec}'`);
                 }
 
                 // init plugin and pass basic dependencies
-                plugin = new pluginClass({
+                plugin = new PluginClass({
                     events: Events,
                     loading,
                     appSettings,
@@ -86,7 +88,9 @@ class PluginManager {
                     appRouter,
                     inputManager,
                     toast,
-                    confirm
+                    confirm,
+                    dashboard,
+                    ServerConnections
                 });
             } else {
                 console.debug(`Loading plugin (via dynamic import): ${pluginSpec}`);
@@ -115,25 +119,14 @@ class PluginManager {
     }
 
     ofType(type) {
-        return this.pluginsList.filter((o) => {
-            return o.type === type;
-        });
+        return this.pluginsList.filter(plugin => plugin.type === type);
     }
 
-    #mapRoute(plugin, route) {
-        if (typeof plugin === 'string') {
-            plugin = this.pluginsList.filter((p) => {
-                return (p.id || p.packageName) === plugin;
-            })[0];
-        }
-
-        route = route.path || route;
-
-        if (route.toLowerCase().startsWith('http')) {
-            return route;
-        }
-
-        return '/plugins/' + plugin.id + '/' + route;
+    firstOfType(type) {
+        // Get all plugins of the specified type
+        return this.ofType(type)
+            // Return the plugin with the "highest" (lowest numeric value) priority
+            .sort((p1, p2) => (p1.priority || 0) - (p2.priority || 0))[0];
     }
 
     mapPath(plugin, path, addCacheParam) {

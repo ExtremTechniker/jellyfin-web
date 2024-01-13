@@ -1,7 +1,7 @@
-import { Events } from 'jellyfin-apiclient';
 import toast from '../../../components/toast/toast';
 import globalize from '../../../scripts/globalize';
 import appSettings from '../../../scripts/settings/appSettings';
+import Events from '../../../utils/events.ts';
 
 export default function (view) {
     function submit(e) {
@@ -21,7 +21,7 @@ export default function (view) {
         view.querySelector('form').addEventListener('submit', submit);
         view.querySelector('.btnSave').classList.remove('hide');
 
-        import('../../../components/autoFocuser').then(({default: autoFocuser}) => {
+        import('../../../components/autoFocuser').then(({ default: autoFocuser }) => {
             autoFocuser.autoFocus(view);
         });
     });

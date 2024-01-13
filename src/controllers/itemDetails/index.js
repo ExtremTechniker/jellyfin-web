@@ -1,40 +1,46 @@
 import { intervalToDuration } from 'date-fns';
 import DOMPurify from 'dompurify';
+import markdownIt from 'markdown-it';
 import escapeHtml from 'escape-html';
 import isEqual from 'lodash-es/isEqual';
 
-import { appHost } from '../../components/apphost';
-import loading from '../../components/loading/loading';
-import { appRouter } from '../../components/appRouter';
-import layoutManager from '../../components/layoutManager';
-import { Events } from 'jellyfin-apiclient';
-import * as userSettings from '../../scripts/settings/userSettings';
-import cardBuilder from '../../components/cardbuilder/cardBuilder';
-import datetime from '../../scripts/datetime';
-import mediaInfo from '../../components/mediainfo/mediainfo';
-import { clearBackdrop, setBackdrops } from '../../components/backdrop/backdrop';
-import listView from '../../components/listview/listview';
-import itemContextMenu from '../../components/itemContextMenu';
-import itemHelper from '../../components/itemHelper';
-import dom from '../../scripts/dom';
-import imageLoader from '../../components/images/imageLoader';
-import libraryMenu from '../../scripts/libraryMenu';
-import globalize from '../../scripts/globalize';
-import browser from '../../scripts/browser';
-import { playbackManager } from '../../components/playback/playbackmanager';
-import '../../assets/css/scrollstyles.scss';
-import '../../elements/emby-itemscontainer/emby-itemscontainer';
-import '../../elements/emby-checkbox/emby-checkbox';
-import '../../elements/emby-button/emby-button';
-import '../../elements/emby-playstatebutton/emby-playstatebutton';
-import '../../elements/emby-ratingbutton/emby-ratingbutton';
-import '../../elements/emby-scroller/emby-scroller';
-import '../../elements/emby-select/emby-select';
-import itemShortcuts from '../../components/shortcuts';
-import Dashboard from '../../utils/dashboard';
-import ServerConnections from '../../components/ServerConnections';
-import confirm from '../../components/confirm/confirm';
-import { download } from '../../scripts/fileDownloader';
+import { appHost } from 'components/apphost';
+import { clearBackdrop, setBackdrops } from 'components/backdrop/backdrop';
+import cardBuilder from 'components/cardbuilder/cardBuilder';
+import { buildCardImage } from 'components/cardbuilder/cardImage';
+import confirm from 'components/confirm/confirm';
+import imageLoader from 'components/images/imageLoader';
+import itemContextMenu from 'components/itemContextMenu';
+import itemHelper from 'components/itemHelper';
+import mediaInfo from 'components/mediainfo/mediainfo';
+import layoutManager from 'components/layoutManager';
+import listView from 'components/listview/listview';
+import loading from 'components/loading/loading';
+import { playbackManager } from 'components/playback/playbackmanager';
+import { appRouter } from 'components/router/appRouter';
+import itemShortcuts from 'components/shortcuts';
+import ServerConnections from 'components/ServerConnections';
+import browser from 'scripts/browser';
+import datetime from 'scripts/datetime';
+import dom from 'scripts/dom';
+import { download } from 'scripts/fileDownloader';
+import globalize from 'scripts/globalize';
+import libraryMenu from 'scripts/libraryMenu';
+import * as userSettings from 'scripts/settings/userSettings';
+import { getPortraitShape, getSquareShape } from 'utils/card';
+import Dashboard from 'utils/dashboard';
+import Events from 'utils/events';
+import { getItemBackdropImageUrl } from 'utils/jellyfin-apiclient/backdropImage';
+
+import 'elements/emby-itemscontainer/emby-itemscontainer';
+import 'elements/emby-checkbox/emby-checkbox';
+import 'elements/emby-button/emby-button';
+import 'elements/emby-playstatebutton/emby-playstatebutton';
+import 'elements/emby-ratingbutton/emby-ratingbutton';
+import 'elements/emby-scroller/emby-scroller';
+import 'elements/emby-select/emby-select';
+
+import 'styles/scrollstyles.scss';
 
 function autoFocus(container) {
     import('../../components/autoFocuser').then(({ default: autoFocuser }) => {
@@ -96,33 +102,31 @@ function getContextMenuOptions(item, user, button) {
     };
 }
 
-function getProgramScheduleHtml(items) {
-    let html = '';
-
-    html += '<div is="emby-itemscontainer" class="itemsContainer vertical-list" data-contextmenu="false">';
-    html += listView.getListViewHtml({
+function getProgramScheduleHtml(items, action = 'none') {
+    return listView.getListViewHtml({
         items: items,
         enableUserDataButtons: false,
         image: true,
         imageSource: 'channel',
         showProgramDateTime: true,
         showChannel: false,
-        mediaInfo: false,
-        action: 'none',
+        mediaInfo: true,
+        runtime: false,
+        action,
         moreButton: false,
         recordButton: false
     });
+}
 
-    html += '</div>';
-
-    return html;
+function getSelectedMediaSource(page, mediaSources) {
+    const mediaSourceId = page.querySelector('.selectSource').value;
+    return mediaSources.filter(m => m.Id === mediaSourceId)[0];
 }
 
 function renderSeriesTimerSchedule(page, apiClient, seriesTimerId) {
     apiClient.getLiveTvTimers({
         UserId: apiClient.getCurrentUserId(),
         ImageTypeLimit: 1,
-        EnableImageTypes: 'Primary,Backdrop,Thumb',
         SortBy: 'StartDate',
         EnableTotalRecordCount: false,
         EnableUserData: false,
@@ -134,7 +138,7 @@ function renderSeriesTimerSchedule(page, apiClient, seriesTimerId) {
         }
 
         const html = getProgramScheduleHtml(result.Items);
-        const scheduleTab = page.querySelector('.seriesTimerSchedule');
+        const scheduleTab = page.querySelector('#seriesTimerSchedule');
         scheduleTab.innerHTML = html;
         imageLoader.lazyChildren(scheduleTab);
     });
@@ -162,15 +166,14 @@ function renderSeriesTimerEditor(page, item, apiClient, user) {
             });
         });
 
-        page.querySelector('.seriesTimerScheduleSection').classList.remove('hide');
+        page.querySelector('#seriesTimerScheduleSection').classList.remove('hide');
         hideAll(page, 'btnCancelSeriesTimer', true);
         renderSeriesTimerSchedule(page, apiClient, item.Id);
         return;
     }
 
-    page.querySelector('.seriesTimerScheduleSection').classList.add('hide');
+    page.querySelector('#seriesTimerScheduleSection').classList.add('hide');
     hideAll(page, 'btnCancelSeriesTimer');
-    return;
 }
 
 function renderTrackSelections(page, instance, item, forceReload) {
@@ -185,30 +188,7 @@ function renderTrackSelections(page, instance, item, forceReload) {
         return;
     }
 
-    let mediaSources = item.MediaSources;
-
-    const resolutionNames = [];
-    const sourceNames = [];
-    mediaSources.forEach(function (v) {
-        (v.Name.endsWith('p') || v.Name.endsWith('i')) && !Number.isNaN(parseInt(v.Name, 10)) ? resolutionNames.push(v) : sourceNames.push(v);
-    });
-
-    resolutionNames.sort((a, b) => parseInt(b.Name, 10) - parseInt(a.Name, 10));
-    sourceNames.sort((a, b) => {
-        const nameA = a.Name.toUpperCase();
-        const nameB = b.Name.toUpperCase();
-        if (nameA < nameB) {
-            return -1;
-        } else if (nameA > nameB) {
-            return 1;
-        }
-        return 0;
-    });
-
-    mediaSources = [];
-    resolutionNames.forEach(v => mediaSources.push(v));
-    sourceNames.forEach(v => mediaSources.push(v));
-
+    const mediaSources = item.MediaSources;
     instance._currentPlaybackMediaSources = mediaSources;
 
     page.querySelector('.trackSelections').classList.remove('hide');
@@ -236,10 +216,7 @@ function renderTrackSelections(page, instance, item, forceReload) {
 }
 
 function renderVideoSelections(page, mediaSources) {
-    const mediaSourceId = page.querySelector('.selectSource').value;
-    const mediaSource = mediaSources.filter(function (m) {
-        return m.Id === mediaSourceId;
-    })[0];
+    const mediaSource = getSelectedMediaSource(page, mediaSources);
 
     const tracks = mediaSource.MediaStreams.filter(function (m) {
         return m.Type === 'Video';
@@ -273,10 +250,8 @@ function renderVideoSelections(page, mediaSources) {
 }
 
 function renderAudioSelections(page, mediaSources) {
-    const mediaSourceId = page.querySelector('.selectSource').value;
-    const mediaSource = mediaSources.filter(function (m) {
-        return m.Id === mediaSourceId;
-    })[0];
+    const mediaSource = getSelectedMediaSource(page, mediaSources);
+
     const tracks = mediaSource.MediaStreams.filter(function (m) {
         return m.Type === 'Audio';
     });
@@ -303,10 +278,8 @@ function renderAudioSelections(page, mediaSources) {
 }
 
 function renderSubtitleSelections(page, mediaSources) {
-    const mediaSourceId = page.querySelector('.selectSource').value;
-    const mediaSource = mediaSources.filter(function (m) {
-        return m.Id === mediaSourceId;
-    })[0];
+    const mediaSource = getSelectedMediaSource(page, mediaSources);
+
     const tracks = mediaSource.MediaStreams.filter(function (m) {
         return m.Type === 'Subtitle';
     });
@@ -438,7 +411,7 @@ function renderName(item, container, context) {
     if (item.AlbumArtists) {
         parentNameHtml.push(getArtistLinksHtml(item.AlbumArtists, item.ServerId, context));
         parentNameLast = true;
-    } else if (item.ArtistItems && item.ArtistItems.length && item.Type === 'MusicVideo') {
+    } else if (item.ArtistItems?.length && item.Type === 'MusicVideo') {
         parentNameHtml.push(getArtistLinksHtml(item.ArtistItems, item.ServerId, context));
         parentNameLast = true;
     } else if (item.SeriesName && item.Type === 'Episode') {
@@ -473,7 +446,7 @@ function renderName(item, container, context) {
                 html = '<h3 class="parentName musicParentName focuscontainer-x">' + parentNameHtml.join(' - ') + '</h3>';
             }
         } else {
-            html = '<h1 class="parentName focuscontainer-x">' + tvShowHtml + '</h1>';
+            html = '<h1 class="parentName focuscontainer-x"><bdi>' + tvShowHtml + '</bdi></h1>';
         }
     }
 
@@ -483,14 +456,14 @@ function renderName(item, container, context) {
 
     if (html && !parentNameLast) {
         if (tvSeasonHtml) {
-            html += '<h3 class="itemName infoText subtitle focuscontainer-x">' + tvSeasonHtml + ' - ' + name + '</h3>';
+            html += '<h3 class="itemName infoText subtitle focuscontainer-x"><bdi>' + tvSeasonHtml + ' - ' + name + '</bdi></h3>';
         } else {
-            html += '<h3 class="itemName infoText subtitle">' + name + '</h3>';
+            html += '<h3 class="itemName infoText subtitle"><bdi>' + name + '</bdi></h3>';
         }
     } else if (item.OriginalTitle && item.OriginalTitle != item.Name) {
-        html = '<h1 class="itemName infoText parentNameLast withOriginalTitle">' + name + '</h1>' + html;
+        html = '<h1 class="itemName infoText parentNameLast withOriginalTitle"><bdi>' + name + '</bdi></h1>' + html;
     } else {
-        html = '<h1 class="itemName infoText parentNameLast">' + name + '</h1>' + html;
+        html = '<h1 class="itemName infoText parentNameLast"><bdi>' + name + '</bdi></h1>' + html;
     }
 
     if (item.OriginalTitle && item.OriginalTitle != item.Name) {
@@ -507,7 +480,7 @@ function renderName(item, container, context) {
 }
 
 function setTrailerButtonVisibility(page, item) {
-    if ((item.LocalTrailerCount || item.RemoteTrailers && item.RemoteTrailers.length) && playbackManager.getSupportedCommands().indexOf('PlayTrailers') !== -1) {
+    if ((item.LocalTrailerCount || item.RemoteTrailers?.length) && playbackManager.getSupportedCommands().indexOf('PlayTrailers') !== -1) {
         hideAll(page, 'btnPlayTrailer', true);
     } else {
         hideAll(page, 'btnPlayTrailer');
@@ -533,34 +506,12 @@ function renderDetailPageBackdrop(page, item, apiClient) {
         return false;
     }
 
-    let imgUrl;
     let hasbackdrop = false;
     const itemBackdropElement = page.querySelector('#itemBackdrop');
 
-    if (item.BackdropImageTags && item.BackdropImageTags.length) {
-        imgUrl = apiClient.getScaledImageUrl(item.Id, {
-            type: 'Backdrop',
-            maxWidth: dom.getScreenWidth(),
-            index: 0,
-            tag: item.BackdropImageTags[0]
-        });
-        imageLoader.lazyImage(itemBackdropElement, imgUrl);
-        hasbackdrop = true;
-    } else if (item.ParentBackdropItemId && item.ParentBackdropImageTags && item.ParentBackdropImageTags.length) {
-        imgUrl = apiClient.getScaledImageUrl(item.ParentBackdropItemId, {
-            type: 'Backdrop',
-            maxWidth: dom.getScreenWidth(),
-            index: 0,
-            tag: item.ParentBackdropImageTags[0]
-        });
-        imageLoader.lazyImage(itemBackdropElement, imgUrl);
-        hasbackdrop = true;
-    } else if (item.ImageTags && item.ImageTags.Primary) {
-        imgUrl = apiClient.getScaledImageUrl(item.Id, {
-            type: 'Primary',
-            maxWidth: dom.getScreenWidth(),
-            tag: item.ImageTags.Primary
-        });
+    const imgUrl = getItemBackdropImageUrl(apiClient, item, { maxWitdh: dom.getScreenWidth() }, false);
+
+    if (imgUrl) {
         imageLoader.lazyImage(itemBackdropElement, imgUrl);
         hasbackdrop = true;
     } else {
@@ -576,7 +527,7 @@ function reloadFromItem(instance, page, params, item, user) {
     libraryMenu.setTitle('');
 
     // Start rendering the artwork first
-    renderImage(page, item);
+    renderImage(page, item, apiClient);
     // Save some screen real estate in TV mode
     if (!layoutManager.tv) {
         renderLogo(page, item, apiClient);
@@ -692,7 +643,7 @@ function logoImageUrl(item, apiClient, options) {
     options = options || {};
     options.type = 'Logo';
 
-    if (item.ImageTags && item.ImageTags.Logo) {
+    if (item.ImageTags?.Logo) {
         options.tag = item.ImageTags.Logo;
         return apiClient.getScaledImageUrl(item.Id, options);
     }
@@ -723,8 +674,8 @@ function showRecordingFields(instance, page, item, user) {
         const recordingFieldsElement = page.querySelector('.recordingFields');
 
         if (item.Type == 'Program' && user.Policy.EnableLiveTvManagement) {
-            import('../../components/recordingcreator/recordingfields').then(({ default: recordingFields }) => {
-                instance.currentRecordingFields = new recordingFields({
+            import('../../components/recordingcreator/recordingfields').then(({ default: RecordingFields }) => {
+                instance.currentRecordingFields = new RecordingFields({
                     parent: recordingFieldsElement,
                     programId: item.Id,
                     serverId: item.ServerId
@@ -767,31 +718,20 @@ function renderLinks(page, item) {
     }
 }
 
-function renderDetailImage(elem, item, imageLoader) {
-    const itemArray = [];
-    itemArray.push(item);
-    const cardHtml = cardBuilder.getCardsHtml(itemArray, {
-        shape: 'auto',
-        showTitle: false,
-        centerText: true,
-        overlayText: false,
-        transition: false,
-        disableHoverMenu: true,
-        disableIndicators: true,
-        overlayPlayButton: layoutManager.desktop,
-        action: layoutManager.desktop ? 'resume' : 'none',
-        width: dom.getWindowSize().innerWidth * 0.25
-    });
+function renderDetailImage(apiClient, elem, item, loader) {
+    const html = buildCardImage(
+        apiClient,
+        item,
+        { width: dom.getWindowSize().innerWidth * 0.25 }
+    );
 
-    elem.innerHTML = cardHtml;
-    imageLoader.lazyChildren(elem);
-
-    // Avoid breaking the design by preventing focus of the poster using the keyboard.
-    elem.querySelector('a, button').tabIndex = -1;
+    elem.innerHTML = html;
+    loader.lazyChildren(elem);
 }
 
-function renderImage(page, item) {
+function renderImage(page, item, apiClient) {
     renderDetailImage(
+        apiClient,
         page.querySelector('.detailImageContainer'),
         item,
         imageLoader
@@ -876,6 +816,7 @@ function setInitialCollapsibleState(page, item, apiClient, context, user) {
     }
 
     renderCast(page, item);
+    renderGuestCast(page, item);
 
     if (item.PartCount && item.PartCount > 1) {
         page.querySelector('#additionalPartsCollapsible').classList.remove('hide');
@@ -884,7 +825,7 @@ function setInitialCollapsibleState(page, item, apiClient, context, user) {
         page.querySelector('#additionalPartsCollapsible').classList.add('hide');
     }
 
-    if (item.Type == 'MusicAlbum') {
+    if (item.Type == 'MusicAlbum' || item.Type == 'MusicArtist') {
         renderMusicVideos(page, item, user);
     } else {
         page.querySelector('#musicVideosCollapsible').classList.add('hide');
@@ -908,11 +849,11 @@ function renderOverview(page, item) {
     const overviewElements = page.querySelectorAll('.overview');
 
     if (overviewElements.length > 0) {
-        const overview = DOMPurify.sanitize(item.Overview || '');
+        const overview = DOMPurify.sanitize(markdownIt({ html: true }).render(item.Overview || ''));
 
         if (overview) {
             for (const overviewElemnt of overviewElements) {
-                overviewElemnt.innerHTML = overview;
+                overviewElemnt.innerHTML = '<bdi>' + overview + '</bdi>';
                 overviewElemnt.classList.remove('hide');
                 overviewElemnt.classList.add('detail-clamp-text');
 
@@ -1028,6 +969,29 @@ function renderDirector(page, item, context) {
     }
 }
 
+function renderStudio(page, item, context) {
+    const studios = item.Studios || [];
+
+    const html = studios.map(function (studio) {
+        return '<a style="color:inherit;" class="button-link" is="emby-linkbutton" href="' + appRouter.getRouteUrl({
+            Name: studio.Name,
+            Type: 'Studio',
+            ServerId: item.ServerId,
+            Id: studio.Id
+        }, {
+            context: context
+        }) + '">' + escapeHtml(studio.Name) + '</a>';
+    }).join(', ');
+
+    const studiosLabel = page.querySelector('.studiosLabel');
+    studiosLabel.innerText = globalize.translate(studios.length > 1 ? 'Studios' : 'Studio');
+    const studiosValue = page.querySelector('.studios');
+    studiosValue.innerHTML = html;
+
+    const studiosGroup = page.querySelector('.studiosGroup');
+    studiosGroup.classList.toggle('hide', !studios.length);
+}
+
 function renderMiscInfo(page, item) {
     const primaryItemMiscInfo = page.querySelectorAll('.itemMiscInfo-primary');
 
@@ -1063,19 +1027,20 @@ function renderMiscInfo(page, item) {
 function renderTagline(page, item) {
     const taglineElement = page.querySelector('.tagline');
 
-    if (item.Taglines && item.Taglines.length) {
+    if (item.Taglines?.length) {
         taglineElement.classList.remove('hide');
-        taglineElement.innerText = item.Taglines[0];
+        taglineElement.innerHTML = '<bdi>' + escapeHtml(item.Taglines[0]) + '</bdi>';
     } else {
         taglineElement.classList.add('hide');
     }
 }
 
-function renderDetails(page, item, apiClient, context, isStatic) {
+function renderDetails(page, item, apiClient, context) {
     renderSimilarItems(page, item, context);
     renderMoreFromSeason(page, item, apiClient);
     renderMoreFromArtist(page, item, apiClient);
     renderDirector(page, item, context);
+    renderStudio(page, item, context);
     renderWriter(page, item, context);
     renderGenres(page, item, context);
     renderChannelGuide(page, apiClient, item);
@@ -1090,27 +1055,11 @@ function renderDetails(page, item, apiClient, context, isStatic) {
     }
 
     renderTags(page, item);
-    renderSeriesAirTime(page, item, isStatic);
+    renderSeriesAirTime(page, item);
 }
 
 function enableScrollX() {
     return browser.mobile && window.screen.availWidth <= 1000;
-}
-
-function getPortraitShape(scrollX) {
-    if (scrollX == null) {
-        scrollX = enableScrollX();
-    }
-
-    return scrollX ? 'overflowPortrait' : 'portrait';
-}
-
-function getSquareShape(scrollX) {
-    if (scrollX == null) {
-        scrollX = enableScrollX();
-    }
-
-    return scrollX ? 'overflowSquare' : 'square';
 }
 
 function renderMoreFromSeason(view, item, apiClient) {
@@ -1126,7 +1075,7 @@ function renderMoreFromSeason(view, item, apiClient) {
         apiClient.getEpisodes(item.SeriesId, {
             SeasonId: item.SeasonId,
             UserId: userId,
-            Fields: 'ItemCounts,PrimaryImageAspectRatio,BasicSyncInfo,CanDelete,MediaSourceCount'
+            Fields: 'ItemCounts,PrimaryImageAspectRatio,CanDelete,MediaSourceCount'
         }).then(function (result) {
             if (result.Items.length < 2) {
                 section.classList.add('hide');
@@ -1163,12 +1112,7 @@ function renderMoreFromArtist(view, item, apiClient) {
     const section = view.querySelector('.moreFromArtistSection');
 
     if (section) {
-        if (item.Type === 'MusicArtist') {
-            if (!apiClient.isMinServerVersion('3.4.1.19')) {
-                section.classList.add('hide');
-                return;
-            }
-        } else if (item.Type !== 'MusicAlbum' || !item.AlbumArtists || !item.AlbumArtists.length) {
+        if (item.Type !== 'MusicArtist' && (item.Type !== 'MusicAlbum' || !item.AlbumArtists || !item.AlbumArtists.length)) {
             section.classList.add('hide');
             return;
         }
@@ -1269,14 +1213,14 @@ function renderSimilarItems(page, item, context) {
     }
 }
 
-function renderSeriesAirTime(page, item, isStatic) {
+function renderSeriesAirTime(page, item) {
     const seriesAirTime = page.querySelector('#seriesAirTime');
     if (item.Type != 'Series') {
         seriesAirTime.classList.add('hide');
         return;
     }
     let html = '';
-    if (item.AirDays && item.AirDays.length) {
+    if (item.AirDays?.length) {
         if (item.AirDays.length == 7) {
             html += 'daily';
         } else {
@@ -1287,19 +1231,6 @@ function renderSeriesAirTime(page, item, isStatic) {
     }
     if (item.AirTime) {
         html += ' at ' + item.AirTime;
-    }
-    if (item.Studios.length) {
-        if (isStatic) {
-            html += ' on ' + escapeHtml(item.Studios[0].Name);
-        } else {
-            const context = inferContext(item);
-            const href = appRouter.getRouteUrl(item.Studios[0], {
-                context: context,
-                itemType: 'Studio',
-                serverId: item.ServerId
-            });
-            html += ' on <a class="textlink button-link" is="emby-linkbutton" href="' + href + '">' + escapeHtml(item.Studios[0].Name) + '</a>';
-        }
     }
     if (html) {
         html = (item.Status == 'Ended' ? 'Aired ' : 'Airs ') + html;
@@ -1333,7 +1264,7 @@ function renderTags(page, item) {
 }
 
 function renderChildren(page, item) {
-    let fields = 'ItemCounts,PrimaryImageAspectRatio,BasicSyncInfo,CanDelete,MediaSourceCount';
+    let fields = 'ItemCounts,PrimaryImageAspectRatio,CanDelete,MediaSourceCount';
     const query = {
         ParentId: item.Id,
         Fields: fields
@@ -1433,8 +1364,8 @@ function renderChildren(page, item) {
                     items: result.Items,
                     showIndexNumber: false,
                     enableOverview: true,
-                    enablePlayedButton: layoutManager.mobile ? false : true,
-                    infoButton: layoutManager.mobile ? false : true,
+                    enablePlayedButton: !layoutManager.mobile,
+                    infoButton: !layoutManager.mobile,
                     imageSize: 'large',
                     enableSideMediaInfo: false,
                     highlight: false,
@@ -1596,13 +1527,13 @@ function renderSeriesSchedule(page, item) {
     const apiClient = ServerConnections.getApiClient(item.ServerId);
     apiClient.getLiveTvPrograms({
         UserId: apiClient.getCurrentUserId(),
+        ImageTypeLimit: 1,
         HasAired: false,
         SortBy: 'StartDate',
         EnableTotalRecordCount: false,
-        EnableImages: false,
-        ImageTypeLimit: 0,
         Limit: 50,
         EnableUserData: false,
+        Fields: 'ChannelInfo,ChannelImage',
         LibrarySeriesId: item.Id
     }).then(function (result) {
         if (result.Items.length) {
@@ -1611,17 +1542,11 @@ function renderSeriesSchedule(page, item) {
             page.querySelector('#seriesScheduleSection').classList.add('hide');
         }
 
-        page.querySelector('#seriesScheduleList').innerHTML = listView.getListViewHtml({
-            items: result.Items,
-            enableUserDataButtons: false,
-            showParentTitle: false,
-            image: false,
-            showProgramDateTime: true,
-            mediaInfo: false,
-            showTitle: true,
-            moreButton: false,
-            action: 'programdialog'
-        });
+        const html = getProgramScheduleHtml(result.Items, 'programdialog');
+        const scheduleTab = page.querySelector('#seriesScheduleList');
+        scheduleTab.innerHTML = html;
+        imageLoader.lazyChildren(scheduleTab);
+
         loading.hide();
     });
 }
@@ -1751,14 +1676,21 @@ function renderCollectionItemType(page, parentItem, type, items) {
 }
 
 function renderMusicVideos(page, item, user) {
-    ServerConnections.getApiClient(item.ServerId).getItems(user.Id, {
+    const request = {
         SortBy: 'SortName',
         SortOrder: 'Ascending',
         IncludeItemTypes: 'MusicVideo',
         Recursive: true,
-        Fields: 'PrimaryImageAspectRatio,BasicSyncInfo,CanDelete,MediaSourceCount',
-        AlbumIds: item.Id
-    }).then(function (result) {
+        Fields: 'PrimaryImageAspectRatio,CanDelete,MediaSourceCount'
+    };
+
+    if (item.Type == 'MusicAlbum') {
+        request.AlbumIds = item.Id;
+    } else {
+        request.ArtistIds = item.Id;
+    }
+
+    ServerConnections.getApiClient(item.ServerId).getItems(user.Id, request).then(function (result) {
         if (result.Items.length) {
             page.querySelector('#musicVideosCollapsible').classList.remove('hide');
             const musicVideosContent = page.querySelector('#musicVideosContent');
@@ -1851,11 +1783,34 @@ function renderCast(page, item) {
     });
 }
 
-function itemDetailPage() {
+function renderGuestCast(page, item) {
+    const people = (item.People || []).filter(p => p.Type === 'GuestStar');
+
+    if (!people.length) {
+        page.querySelector('#guestCastCollapsible').classList.add('hide');
+        return;
+    }
+
+    page.querySelector('#guestCastCollapsible').classList.remove('hide');
+    const guestCastContent = page.querySelector('#guestCastContent');
+
+    import('../../components/cardbuilder/peoplecardbuilder').then(({ default: peoplecardbuilder }) => {
+        peoplecardbuilder.buildPeopleCards(people, {
+            itemsContainer: guestCastContent,
+            coverImage: true,
+            serverId: item.ServerId,
+            shape: 'overflowPortrait',
+            imageBlurhashes: item.ImageBlurHashes
+        });
+    });
+}
+
+function ItemDetailPage() {
     const self = this;
     self.setInitialCollapsibleState = setInitialCollapsibleState;
     self.renderDetails = renderDetails;
     self.renderCast = renderCast;
+    self.renderGuestCast = renderGuestCast;
 }
 
 function bindAll(view, selector, eventName, fn) {
@@ -1871,35 +1826,35 @@ function onTrackSelectionsSubmit(e) {
     return false;
 }
 
-window.ItemDetailPage = new itemDetailPage();
+window.ItemDetailPage = new ItemDetailPage();
 
 export default function (view, params) {
     function getApiClient() {
         return params.serverId ? ServerConnections.getApiClient(params.serverId) : ApiClient;
     }
 
-    function reload(instance, page, params) {
+    function reload(instance, page, pageParams) {
         loading.show();
 
         const apiClient = getApiClient();
 
-        Promise.all([getPromise(apiClient, params), apiClient.getCurrentUser()]).then(([item, user]) => {
+        Promise.all([getPromise(apiClient, pageParams), apiClient.getCurrentUser()]).then(([item, user]) => {
             currentItem = item;
-            reloadFromItem(instance, page, params, item, user);
+            reloadFromItem(instance, page, pageParams, item, user);
         }).catch((error) => {
             console.error('failed to get item or current user: ', error);
         });
     }
 
-    function splitVersions(instance, page, apiClient, params) {
+    function splitVersions(instance, page, apiClient, pageParams) {
         confirm('Are you sure you wish to split the media sources into separate items?', 'Split Media Apart').then(function () {
             loading.show();
             apiClient.ajax({
                 type: 'DELETE',
-                url: apiClient.getUrl('Videos/' + params.id + '/AlternateSources')
+                url: apiClient.getUrl('Videos/' + pageParams.id + '/AlternateSources')
             }).then(function () {
                 loading.hide();
-                reload(instance, page, params);
+                reload(instance, page, pageParams);
             });
         });
     }
@@ -1985,7 +1940,9 @@ export default function (view, params) {
         download([{
             url: downloadHref,
             itemId: currentItem.Id,
-            serverId: currentItem.serverId
+            serverId: currentItem.ServerId,
+            title: currentItem.Name,
+            filename: currentItem.Path.replace(/^.*[\\/]/, '')
         }]);
     }
 
@@ -1999,13 +1956,15 @@ export default function (view, params) {
             selectedItem = item;
 
             apiClient.getCurrentUser().then(function (user) {
-                itemContextMenu.show(getContextMenuOptions(selectedItem, user, button)).then(function (result) {
-                    if (result.deleted) {
-                        appRouter.goHome();
-                    } else if (result.updated) {
-                        reload(self, view, params);
-                    }
-                });
+                itemContextMenu.show(getContextMenuOptions(selectedItem, user, button))
+                    .then(function (result) {
+                        if (result.deleted) {
+                            appRouter.goHome();
+                        } else if (result.updated) {
+                            reload(self, view, params);
+                        }
+                    })
+                    .catch(() => { /* no-op */ });
             });
         });
     }
@@ -2047,7 +2006,6 @@ export default function (view, params) {
         bindAll(view, '.btnCancelSeriesTimer', 'click', onCancelSeriesTimerClick);
         bindAll(view, '.btnCancelTimer', 'click', onCancelTimerClick);
         bindAll(view, '.btnDownload', 'click', onDownloadClick);
-        view.querySelector('.detailImageContainer').addEventListener('click', onPlayClick);
         view.querySelector('.trackSelections').addEventListener('submit', onTrackSelectionsSubmit);
         view.querySelector('.btnSplitVersions').addEventListener('click', function () {
             splitVersions(self, view, apiClient, params);
@@ -2057,6 +2015,7 @@ export default function (view, params) {
             renderVideoSelections(view, self._currentPlaybackMediaSources);
             renderAudioSelections(view, self._currentPlaybackMediaSources);
             renderSubtitleSelections(view, self._currentPlaybackMediaSources);
+            updateMiscInfo();
         });
         view.addEventListener('viewshow', function (e) {
             const page = this;
@@ -2088,6 +2047,15 @@ export default function (view, params) {
             currentItem = null;
             self._currentPlaybackMediaSources = null;
             self.currentRecordingFields = null;
+        });
+    }
+
+    function updateMiscInfo() {
+        const selectedMediaSource = getSelectedMediaSource(view, self._currentPlaybackMediaSources);
+        renderMiscInfo(view, {
+            // patch currentItem (primary item) with details from the selected MediaSource:
+            ...currentItem,
+            ...selectedMediaSource
         });
     }
 

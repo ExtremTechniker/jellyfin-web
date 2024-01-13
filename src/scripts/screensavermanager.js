@@ -1,9 +1,11 @@
-import { Events } from 'jellyfin-apiclient';
 import { playbackManager } from '../components/playback/playbackmanager';
 import { pluginManager } from '../components/pluginManager';
 import inputManager from './inputManager';
 import * as userSettings from './settings/userSettings';
 import ServerConnections from '../components/ServerConnections';
+import { PluginType } from '../types/plugin.ts';
+import Events from '../utils/events.ts';
+
 import './screensavermanager.scss';
 
 function getMinIdleTime() {
@@ -33,7 +35,7 @@ function getScreensaverPlugin(isLoggedIn) {
         option = isLoggedIn ? 'backdropscreensaver' : 'logoscreensaver';
     }
 
-    const plugins = pluginManager.ofType('screensaver');
+    const plugins = pluginManager.ofType(PluginType.Screensaver);
 
     for (const plugin of plugins) {
         if (plugin.id === option) {
@@ -92,7 +94,7 @@ function ScreenSaverManager() {
         let isLoggedIn;
         const apiClient = ServerConnections.currentApiClient();
 
-        if (apiClient && apiClient.isLoggedIn()) {
+        if (apiClient?.isLoggedIn()) {
             isLoggedIn = true;
         }
 
@@ -116,7 +118,7 @@ function ScreenSaverManager() {
             return;
         }
 
-        if (getFunctionalEventIdleTime < getMinIdleTime()) {
+        if (getFunctionalEventIdleTime() < getMinIdleTime()) {
             return;
         }
 

@@ -1,4 +1,4 @@
-import { AppStorage, Events } from 'jellyfin-apiclient';
+import Events from '../../utils/events.ts';
 import { toBoolean } from '../../utils/string.ts';
 
 class AppSettings {
@@ -70,7 +70,7 @@ class AppSettings {
             // return a huge number so that it always direct plays
             return 150000000;
         } else {
-            return parseInt(this.get(key) || '0') || 1500000;
+            return parseInt(this.get(key) || '0', 10) || 1500000;
         }
     }
 
@@ -80,7 +80,7 @@ class AppSettings {
         }
 
         const defaultValue = 320000;
-        return parseInt(this.get('maxStaticMusicBitrate') || defaultValue.toString()) || defaultValue;
+        return parseInt(this.get('maxStaticMusicBitrate') || defaultValue.toString(), 10) || defaultValue;
     }
 
     maxChromecastBitrate(val) {
@@ -89,12 +89,25 @@ class AppSettings {
         }
 
         val = this.get('chromecastBitrate1');
-        return val ? parseInt(val) : null;
+        return val ? parseInt(val, 10) : null;
+    }
+
+    /**
+     * Get or set 'Maximum video width'
+     * @param {number|undefined} val - Maximum video width or undefined.
+     * @return {number} Maximum video width.
+     */
+    maxVideoWidth(val) {
+        if (val !== undefined) {
+            return this.set('maxVideoWidth', val.toString());
+        }
+
+        return parseInt(this.get('maxVideoWidth') || '0', 10) || 0;
     }
 
     set(name, value, userId) {
         const currentValue = this.get(name, userId);
-        AppStorage.setItem(this.#getKey(name, userId), value);
+        localStorage.setItem(this.#getKey(name, userId), value);
 
         if (currentValue !== value) {
             Events.trigger(this, 'change', [name]);
@@ -102,7 +115,7 @@ class AppSettings {
     }
 
     get(name, userId) {
-        return AppStorage.getItem(this.#getKey(name, userId));
+        return localStorage.getItem(this.#getKey(name, userId));
     }
 }
 

@@ -1,23 +1,23 @@
-import { Events } from 'jellyfin-apiclient';
 import loading from '../components/loading/loading';
 import globalize from '../scripts/globalize';
 import Dashboard, { pageIdOn } from '../utils/dashboard';
 import { getParameterByName } from '../utils/url.ts';
+import Events from '../utils/events.ts';
 
 function onListingsSubmitted() {
-    Dashboard.navigate('livetvstatus.html');
+    Dashboard.navigate('dashboard/livetv');
 }
 
 function init(page, type, providerId) {
-    import(`../components/tvproviders/${type}`).then(({default: factory}) => {
-        const instance = new factory(page, providerId, {});
+    import(`../components/tvproviders/${type}`).then(({ default: ProviderFactory }) => {
+        const instance = new ProviderFactory(page, providerId, {});
         Events.on(instance, 'submitted', onListingsSubmitted);
         instance.init();
     });
 }
 
 function loadTemplate(page, type, providerId) {
-    import(`../components/tvproviders/${type}.template.html`).then(({default: html}) => {
+    import(`../components/tvproviders/${type}.template.html`).then(({ default: html }) => {
         page.querySelector('.providerTemplate').innerHTML = globalize.translateHtml(html);
         init(page, type, providerId);
     });

@@ -1,26 +1,11 @@
-:-ms-input-placeholder {
-    appearance: none;
-    -ms-appearance: none;
-    height: 2.223em;
-    margin: 0;
-}
-
 .mdl-slider {
     width: 100%;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    -ms-appearance: none;
     appearance: none;
     height: 150%;/* 150% is needed, else ie and edge won't display the thumb properly */
     background: transparent;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
     user-select: none;
     outline: 0;
     color: #00a4dc;
-    -webkit-align-self: center;
-    -ms-flex-item-align: center;
     align-self: center;
     z-index: 1;
     cursor: pointer;
@@ -68,7 +53,7 @@
 }
 
 .mdl-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
+    appearance: none;
     width: 1.08em;
     height: 1.08em;
     box-sizing: border-box;
@@ -88,7 +73,7 @@
 }
 
 .mdl-slider::-moz-range-thumb {
-    -moz-appearance: none;
+    appearance: none;
     width: 1.08em;
     height: 1.08em;
     box-sizing: border-box;
@@ -108,7 +93,7 @@
 }
 
 .mdl-slider::-ms-thumb {
-    -webkit-appearance: none;
+    appearance: none;
     width: 1.4em;
     height: 1.4em;
     box-sizing: border-box;
@@ -151,9 +136,16 @@
     width: 100%;
     box-sizing: border-box;
     top: 50%;
-    left: 0;
     position: absolute;
     padding: 0 0.54em; /* half of slider thumb size */
+
+    [dir="ltr"] & {
+        left: 0;
+    }
+
+    [dir="rtl"] & {
+        right: 0;
+    }
 }
 
 .mdl-slider-background-flex {
@@ -162,11 +154,18 @@
     margin-top: -0.1em;
     width: 100%;
     top: 50%;
-    left: 0;
     display: flex;
     overflow: hidden;
     border: 0;
     padding: 0;
+
+    [dir="ltr"] & {
+        left: 0;
+    }
+
+    [dir="rtl"] & {
+        right: 0;
+    }
 }
 
 .mdl-slider-background-flex-inner {
@@ -177,11 +176,18 @@
 .mdl-slider-background-lower {
     /* transition: width 0.18s cubic-bezier(0.4, 0, 0.2, 1); */
     position: absolute;
-    left: 0;
     width: 0;
     top: 0;
     bottom: 0;
     background-color: #00a4dc;
+
+    [dir="ltr"] & {
+        left: 0;
+    }
+
+    [dir="rtl"] & {
+        right: 0;
+    }
 }
 
 .mdl-slider-background-lower-clear {
@@ -224,6 +230,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 1;
 }
 
 .sliderBubbleText {
@@ -244,4 +251,26 @@
 .sliderLabel {
     display: block;
     margin-bottom: 0.25em;
+}
+
+.sliderMarkerContainer {
+    position: absolute;
+    left: 0;
+    right: 0;
+    margin: 0 0.54em; /* half of slider thumb size */
+}
+
+.sliderMarker {
+    position: absolute;
+    width: 2px;
+    height: 0.5em;
+    transform: translate3d(0, 25%, 0);
+}
+
+.sliderMarker.unwatched {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+.sliderMarker.watched {
+    background-color: #00a4dc;
 }

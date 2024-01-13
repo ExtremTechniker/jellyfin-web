@@ -6,7 +6,8 @@
 import browser from '../../scripts/browser';
 import dom from '../../scripts/dom';
 import './navdrawer.scss';
-import '../../assets/css/scrollstyles.scss';
+import '../../styles/scrollstyles.scss';
+import globalize from '../../scripts/globalize';
 
 function getTouches(e) {
     return e.changedTouches || e.targetTouches || e.touches;
@@ -73,7 +74,10 @@ class NavDrawer {
         const touch = touches[0] || {};
         const endX = touch.clientX || 0;
         const endY = touch.clientY || 0;
-        const deltaX = endX - (this.menuTouchStartX || 0);
+        let deltaX = endX - (this.menuTouchStartX || 0);
+        if (globalize.getIsRTL()) {
+            deltaX *= -1;
+        }
         const deltaY = endY - (this.menuTouchStartY || 0);
         this.setVelocity(deltaX);
 
@@ -106,7 +110,10 @@ class NavDrawer {
         const touch = touches[0] || {};
         const endX = touch.clientX || 0;
         const endY = touch.clientY || 0;
-        const deltaX = endX - (this.menuTouchStartX || 0);
+        let deltaX = endX - (this.menuTouchStartX || 0);
+        if (globalize.getIsRTL()) {
+            deltaX *= -1;
+        }
         const deltaY = endY - (this.menuTouchStartY || 0);
         this.currentPos = deltaX;
         this.checkMenuState(deltaX, deltaY);
@@ -123,17 +130,15 @@ class NavDrawer {
 
         if (this.isPeeking) {
             this.onMenuTouchMove(e);
-        } else {
-            if (((getTouches(e)[0] || {}).clientX || 0) <= options.handleSize) {
-                this.isPeeking = true;
+        } else if ((getTouches(e)[0]?.clientX || 0) <= options.handleSize) {
+            this.isPeeking = true;
 
-                if (e.type === 'touchstart') {
-                    dom.removeEventListener(this.edgeContainer, 'touchmove', this.onEdgeTouchMove, {});
-                    dom.addEventListener(this.edgeContainer, 'touchmove', this.onEdgeTouchMove, {});
-                }
-
-                this.onMenuTouchStart(e);
+            if (e.type === 'touchstart') {
+                dom.removeEventListener(this.edgeContainer, 'touchmove', this.onEdgeTouchMove, {});
+                dom.addEventListener(this.edgeContainer, 'touchmove', this.onEdgeTouchMove, {});
             }
+
+            this.onMenuTouchStart(e);
         }
     };
 
@@ -161,7 +166,10 @@ class NavDrawer {
 
         if (endX <= options.width && this.isVisible) {
             this.countStart++;
-            const deltaX = endX - (this.backgroundTouchStartX || 0);
+            let deltaX = endX - (this.backgroundTouchStartX || 0);
+            if (globalize.getIsRTL()) {
+                deltaX *= -1;
+            }
 
             if (this.countStart == 1) {
                 this.startPoint = deltaX;
@@ -183,7 +191,10 @@ class NavDrawer {
         const touches = getTouches(e);
         const touch = touches[0] || {};
         const endX = touch.clientX || 0;
-        const deltaX = endX - (this.backgroundTouchStartX || 0);
+        let deltaX = endX - (this.backgroundTouchStartX || 0);
+        if (globalize.getIsRTL()) {
+            deltaX *= -1;
+        }
         this.checkMenuState(deltaX);
         this.countStart = 0;
     };
@@ -193,7 +204,11 @@ class NavDrawer {
 
         options.target.classList.add('touch-menu-la');
         options.target.style.width = options.width + 'px';
-        options.target.style.left = -options.width + 'px';
+        if (globalize.getIsRTL()) {
+            options.target.style.right = -options.width + 'px';
+        } else {
+            options.target.style.left = -options.width + 'px';
+        }
 
         if (!options.disableMask) {
             this.mask = document.createElement('div');
@@ -204,8 +219,9 @@ class NavDrawer {
 
     animateToPosition(pos) {
         const options = this.options;
+        const languageAwarePos = globalize.getIsRTL() ? -pos : pos;
         requestAnimationFrame(function () {
-            options.target.style.transform = pos ? 'translateX(' + pos + 'px)' : 'none';
+            options.target.style.transform = pos ? 'translateX(' + languageAwarePos + 'px)' : 'none';
         });
     }
 
@@ -229,14 +245,10 @@ class NavDrawer {
             } else {
                 this.close();
             }
-        } else {
-            if (this.newPos >= 100) {
-                this.open();
-            } else {
-                if (this.newPos) {
-                    this.close();
-                }
-            }
+        } else if (this.newPos >= 100) {
+            this.open();
+        } else if (this.newPos) {
+            this.close();
         }
     }
 
@@ -289,35 +301,31 @@ class NavDrawer {
     setEdgeSwipeEnabled(enabled) {
         const options = this.options;
 
-        if (!options.disableEdgeSwipe) {
-            if (browser.touch) {
-                if (enabled) {
-                    if (!this._edgeSwipeEnabled) {
-                        this._edgeSwipeEnabled = true;
-                        dom.addEventListener(this.edgeContainer, 'touchstart', this.onEdgeTouchStart, {
-                            passive: true
-                        });
-                        dom.addEventListener(this.edgeContainer, 'touchend', this.onEdgeTouchEnd, {
-                            passive: true
-                        });
-                        dom.addEventListener(this.edgeContainer, 'touchcancel', this.onEdgeTouchEnd, {
-                            passive: true
-                        });
-                    }
-                } else {
-                    if (this._edgeSwipeEnabled) {
-                        this._edgeSwipeEnabled = false;
-                        dom.removeEventListener(this.edgeContainer, 'touchstart', this.onEdgeTouchStart, {
-                            passive: true
-                        });
-                        dom.removeEventListener(this.edgeContainer, 'touchend', this.onEdgeTouchEnd, {
-                            passive: true
-                        });
-                        dom.removeEventListener(this.edgeContainer, 'touchcancel', this.onEdgeTouchEnd, {
-                            passive: true
-                        });
-                    }
+        if (!options.disableEdgeSwipe && browser.touch) {
+            if (enabled) {
+                if (!this._edgeSwipeEnabled) {
+                    this._edgeSwipeEnabled = true;
+                    dom.addEventListener(this.edgeContainer, 'touchstart', this.onEdgeTouchStart, {
+                        passive: true
+                    });
+                    dom.addEventListener(this.edgeContainer, 'touchend', this.onEdgeTouchEnd, {
+                        passive: true
+                    });
+                    dom.addEventListener(this.edgeContainer, 'touchcancel', this.onEdgeTouchEnd, {
+                        passive: true
+                    });
                 }
+            } else if (this._edgeSwipeEnabled) {
+                this._edgeSwipeEnabled = false;
+                dom.removeEventListener(this.edgeContainer, 'touchstart', this.onEdgeTouchStart, {
+                    passive: true
+                });
+                dom.removeEventListener(this.edgeContainer, 'touchend', this.onEdgeTouchEnd, {
+                    passive: true
+                });
+                dom.removeEventListener(this.edgeContainer, 'touchcancel', this.onEdgeTouchEnd, {
+                    passive: true
+                });
             }
         }
     }

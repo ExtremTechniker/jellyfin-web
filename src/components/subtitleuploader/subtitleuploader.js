@@ -1,8 +1,12 @@
+import escapeHtml from 'escape-html';
+
+import { getSubtitleApi } from '@jellyfin/sdk/lib/utils/api/subtitle-api';
+import { toApi } from 'utils/jellyfin-apiclient/compat';
 import dialogHelper from '../../components/dialogHelper/dialogHelper';
 import ServerConnections from '../ServerConnections';
 import dom from '../../scripts/dom';
 import loading from '../../components/loading/loading';
-import scrollHelper from '../../libraries/scroller';
+import scrollHelper from '../../scripts/scrollHelper';
 import layoutManager from '../layoutManager';
 import globalize from '../../scripts/globalize';
 import template from './subtitleuploader.template.html';
@@ -11,6 +15,7 @@ import '../../elements/emby-button/emby-button';
 import '../../elements/emby-select/emby-select';
 import '../formdialog.scss';
 import './style.scss';
+import { readFileAsBase64 } from 'utils/file';
 
 let currentItemId;
 let currentServerId;
@@ -27,7 +32,7 @@ function onFileReaderError(evt) {
 }
 
 function isValidSubtitleFile(file) {
-    return file && ['.sub', '.srt', '.vtt', '.ass', '.ssa']
+    return file && ['.sub', '.srt', '.vtt', '.ass', '.ssa', '.mks']
         .some(function(ext) {
             return file.name.endsWith(ext);
         });
@@ -61,7 +66,7 @@ function setFiles(page, files) {
     reader.onload = (function (theFile) {
         return function () {
             // Render file.
-            const html = '<a><span class="material-icons subtitles" aria-hidden="true" style="transform: translateY(25%);"></span><span>' + escape(theFile.name) + '</span><a/>';
+            const html = `<div><span class="material-icons subtitles" aria-hidden="true" style="transform: translateY(25%);"></span><span>${escapeHtml(theFile.name)}</span></div>`;
 
             page.querySelector('#subtitleOutput').innerHTML = html;
             page.querySelector('#fldUpload').classList.remove('hide');
@@ -73,7 +78,7 @@ function setFiles(page, files) {
     reader.readAsDataURL(file);
 }
 
-function onSubmit(e) {
+async function onSubmit(e) {
     const file = currentFile;
 
     if (!isValidSubtitleFile(file)) {
@@ -87,8 +92,17 @@ function onSubmit(e) {
     const dlg = dom.parentWithClass(this, 'dialog');
     const language = dlg.querySelector('#selectLanguage').value;
     const isForced = dlg.querySelector('#chkIsForced').checked;
+    const isHearingImpaired = dlg.querySelector('#chkIsHearingImpaired').checked;
 
-    ServerConnections.getApiClient(currentServerId).uploadItemSubtitle(currentItemId, language, isForced, file).then(function () {
+    const subtitleApi = getSubtitleApi(toApi(ServerConnections.getApiClient(currentServerId)));
+
+    const data = await readFileAsBase64(file);
+    const format = file.name.substring(file.name.lastIndexOf('.') + 1).toLowerCase();
+
+    subtitleApi.uploadSubtitle({
+        itemId: currentItemId,
+        uploadSubtitleDto: { Data: data, Language: language, IsForced: isForced, Format: format, IsHearingImpaired: isHearingImpaired }
+    }).then(function () {
         dlg.querySelector('#uploadSubtitle').value = '';
         loading.hide();
         hasChanges = true;

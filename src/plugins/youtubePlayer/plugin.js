@@ -1,8 +1,9 @@
-import { Events } from 'jellyfin-apiclient';
 import browser from '../../scripts/browser';
-import { appRouter } from '../../components/appRouter';
+import { appRouter } from '../../components/router/appRouter';
 import loading from '../../components/loading/loading';
 import { setBackdropTransparency, TRANSPARENCY_LEVEL } from '../../components/backdrop/backdrop';
+import { PluginType } from '../../types/plugin.ts';
+import Events from '../../utils/events.ts';
 
 /* globals YT */
 
@@ -32,26 +33,26 @@ function createMediaElement(instance, options) {
             import('./style.scss').then(() => {
                 loading.show();
 
-                const dlg = document.createElement('div');
+                const playerDlg = document.createElement('div');
 
-                dlg.classList.add('youtubePlayerContainer');
+                playerDlg.classList.add('youtubePlayerContainer');
 
                 if (options.fullscreen) {
-                    dlg.classList.add('onTop');
+                    playerDlg.classList.add('onTop');
                 }
 
-                dlg.innerHTML = '<div id="player"></div>';
-                const videoElement = dlg.querySelector('#player');
+                playerDlg.innerHTML = '<div id="player"></div>';
+                const videoElement = playerDlg.querySelector('#player');
 
-                document.body.insertBefore(dlg, document.body.firstChild);
-                instance.videoDialog = dlg;
+                document.body.insertBefore(playerDlg, document.body.firstChild);
+                instance.videoDialog = playerDlg;
 
                 if (options.fullscreen) {
                     document.body.classList.add('hide-scroll');
                 }
 
-                if (options.fullscreen && dlg.animate && !browser.slow) {
-                    zoomIn(dlg, 1).onfinish = function () {
+                if (options.fullscreen && playerDlg.animate && !browser.slow) {
+                    zoomIn(playerDlg, 1).onfinish = function () {
                         resolve(videoElement);
                     };
                 } else {
@@ -197,7 +198,7 @@ function setCurrentSrc(instance, elem, options) {
 class YoutubePlayer {
     constructor() {
         this.name = 'Youtube Player';
-        this.type = 'mediaplayer';
+        this.type = PluginType.MediaPlayer;
         this.id = 'youtubeplayer';
 
         // Let any players created by plugins take priority
@@ -333,10 +334,8 @@ class YoutubePlayer {
     setVolume(val) {
         const currentYoutubePlayer = this.currentYoutubePlayer;
 
-        if (currentYoutubePlayer) {
-            if (val != null) {
-                currentYoutubePlayer.setVolume(val);
-            }
+        if (currentYoutubePlayer && val != null) {
+            currentYoutubePlayer.setVolume(val);
         }
     }
     getVolume() {
@@ -353,10 +352,8 @@ class YoutubePlayer {
             if (currentYoutubePlayer) {
                 currentYoutubePlayer.mute();
             }
-        } else {
-            if (currentYoutubePlayer) {
-                currentYoutubePlayer.unMute();
-            }
+        } else if (currentYoutubePlayer) {
+            currentYoutubePlayer.unMute();
         }
     }
     isMuted() {

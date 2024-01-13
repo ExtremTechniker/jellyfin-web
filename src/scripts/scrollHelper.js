@@ -1,6 +1,6 @@
 import focusManager from '../components/focusManager';
 import dom from './dom';
-import '../assets/css/scrollstyles.scss';
+import '../styles/scrollstyles.scss';
 
 function getBoundingClientRect(elem) {
     // Support: BlackBerry 5, iOS 3 (original iPhone)
@@ -54,12 +54,10 @@ export function toCenter(container, elem, horizontal, skipWhenVisible) {
         } else {
             container.scrollTo(0, pos.center);
         }
+    } else if (horizontal) {
+        container.scrollLeft = Math.round(pos.center);
     } else {
-        if (horizontal) {
-            container.scrollLeft = Math.round(pos.center);
-        } else {
-            container.scrollTop = Math.round(pos.center);
-        }
+        container.scrollTop = Math.round(pos.center);
     }
 }
 
@@ -76,12 +74,10 @@ export function toStart(container, elem, horizontal, skipWhenVisible) {
         } else {
             container.scrollTo(0, pos.start);
         }
+    } else if (horizontal) {
+        container.scrollLeft = Math.round(pos.start);
     } else {
-        if (horizontal) {
-            container.scrollLeft = Math.round(pos.start);
-        } else {
-            container.scrollTop = Math.round(pos.start);
-        }
+        container.scrollTop = Math.round(pos.start);
     }
 }
 

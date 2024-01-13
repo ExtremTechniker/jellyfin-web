@@ -143,13 +143,18 @@
                                 <div class="writersLabel label"></div>
                                 <div class="writers content focuscontainer-x"></div>
                             </div>
+
+                            <div class="detailsGroupItem studiosGroup hide">
+                                <div class="studiosLabel label"></div>
+                                <div class="studios content focuscontainer-x"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="seriesTimerScheduleSection verticalSection detailVerticalSection hide" style="margin-top: -3em;">
+                <div id="seriesTimerScheduleSection" class="verticalSection detailVerticalSection hide" style="margin-top: -3em;">
                     <h2 class="sectionTitle">${Schedule}</h2>
-                    <div class="seriesTimerSchedule padded-right"></div>
+                    <div id="seriesTimerSchedule" is="emby-itemscontainer" class="itemsContainer vertical-list padded-right" data-contextmenu="false"></div>
                 </div>
 
                 <div class="collectionItems hide"></div>
@@ -197,6 +202,13 @@
                     <h2 id="peopleHeader" class="sectionTitle sectionTitle-cards padded-right">${HeaderCastAndCrew}</h2>
                     <div is="emby-scroller" class="padded-top-focusscale padded-bottom-focusscale" data-centerfocus="true">
                         <div id="castContent" is="emby-itemscontainer" class="scrollSlider focuscontainer-x itemsContainer"></div>
+                    </div>
+                </div>
+
+                <div id="guestCastCollapsible" class="verticalSection detailVerticalSection hide">
+                    <h2 id="guestCastHeader" class="sectionTitle sectionTitle-cards padded-right">${HeaderGuestCast}</h2>
+                    <div is="emby-scroller" class="padded-top-focusscale padded-bottom-focusscale" data-centerfocus="true">
+                        <div id="guestCastContent" is="emby-itemscontainer" class="scrollSlider focuscontainer-x itemsContainer"></div>
                     </div>
                 </div>
 

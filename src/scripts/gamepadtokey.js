@@ -38,7 +38,7 @@ const _GAMEPAD_LEFT_THUMBSTICK_UP_KEY = 'GamepadLeftThumbStickUp';
 const _GAMEPAD_LEFT_THUMBSTICK_DOWN_KEY = 'GamepadLeftThumbStickDown';
 const _GAMEPAD_LEFT_THUMBSTICK_LEFT_KEY = 'GamepadLeftThumbStickLeft';
 const _GAMEPAD_LEFT_THUMBSTICK_RIGHT_KEY = 'GamepadLeftThumbStickRight';
-const _GAMEPAD_A_KEYCODE = 0;
+const _GAMEPAD_A_KEYCODE = 13;
 const _GAMEPAD_B_KEYCODE = 27;
 const _GAMEPAD_DPAD_UP_KEYCODE = 38;
 const _GAMEPAD_DPAD_DOWN_KEYCODE = 40;
@@ -168,12 +168,7 @@ function throttle(key) {
     const time = times[key] || 0;
     const now = new Date().getTime();
 
-    if ((now - time) >= 200) {
-        //times[key] = now;
-        return true;
-    }
-
-    return false;
+    return (now - time) >= 200;
 }
 
 function resetThrottle(key) {
@@ -187,11 +182,7 @@ function allowInput() {
         return false;
     }
 
-    if (appHost.getWindowState() === 'Minimized') {
-        return false;
-    }
-
-    return true;
+    return appHost.getWindowState() !== 'Minimized';
 }
 
 function raiseEvent(name, key, keyCode) {
@@ -273,7 +264,7 @@ function runInputLoop() {
         }
         // Iterate through the buttons to see if Left thumbstick, DPad, A and B are pressed.
         const buttons = gamepad.buttons;
-        for (let j = 0, len = buttons.length; j < len; j++) {
+        for (let j = 0, buttonsLen = buttons.length; j < buttonsLen; j++) {
             if (ProcessedButtons.indexOf(j) !== -1) {
                 if (buttons[j].pressed) {
                     switch (j) {
@@ -358,7 +349,7 @@ function isGamepadConnected() {
     const gamepads = navigator.getGamepads(); /* eslint-disable-line compat/compat */
     for (let i = 0, len = gamepads.length; i < len; i++) {
         const gamepad = gamepads[i];
-        if (gamepad && gamepad.connected) {
+        if (gamepad?.connected) {
             return true;
         }
     }

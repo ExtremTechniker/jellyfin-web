@@ -2,18 +2,18 @@ import 'jquery';
 import globalize from '../scripts/globalize';
 import taskButton from '../scripts/taskbutton';
 import dom from '../scripts/dom';
-import cardBuilder from '../components/cardbuilder/cardBuilder';
 import layoutManager from '../components/layoutManager';
 import loading from '../components/loading/loading';
 import browser from '../scripts/browser';
 import '../components/listview/listview.scss';
-import '../assets/css/flexstyles.scss';
+import '../styles/flexstyles.scss';
 import '../elements/emby-itemscontainer/emby-itemscontainer';
 import '../components/cardbuilder/card.scss';
 import 'material-design-icons-iconfont';
 import '../elements/emby-button/emby-button';
 import Dashboard from '../utils/dashboard';
 import confirm from '../components/confirm/confirm';
+import { getDefaultBackgroundClass } from '../components/cardbuilder/cardBuilderUtils';
 
 const enableFocusTransform = !browser.slow && !browser.edge;
 
@@ -38,7 +38,7 @@ function getDeviceHtml(device) {
     html += '<div class="cardScalable visualCardBox-cardScalable">';
     html += '<div class="' + padderClass + '"></div>';
     html += '<div class="cardContent searchImage">';
-    html += `<div class="cardImageContainer coveredImage ${cardBuilder.getDefaultBackgroundClass()}"><span class="cardImageIcon material-icons dvr" aria-hidden="true"></span></div>`;
+    html += `<div class="cardImageContainer coveredImage ${getDefaultBackgroundClass()}"><span class="cardImageIcon material-icons dvr" aria-hidden="true"></span></div>`;
     html += '</div>';
     html += '</div>';
     html += '<div class="cardFooter visualCardBox-cardFooter">';
@@ -49,7 +49,8 @@ function getDeviceHtml(device) {
     html += '</div>';
     html += '</div>';
     html += '</div>';
-    return html += '</div>';
+    html += '</div>';
+    return html;
 }
 
 function renderDevices(page, devices) {
@@ -146,7 +147,7 @@ function showProviderOptions(page, providerId, button) {
         id: 'map'
     });
 
-    import('../components/actionSheet/actionSheet').then(({default: actionsheet}) => {
+    import('../components/actionSheet/actionSheet').then(({ default: actionsheet }) => {
         actionsheet.show({
             items: items,
             positionTo: button
@@ -164,8 +165,8 @@ function showProviderOptions(page, providerId, button) {
 }
 
 function mapChannels(page, providerId) {
-    import('../components/channelMapper/channelMapper').then(({default: channelMapper}) => {
-        new channelMapper({
+    import('../components/channelMapper/channelMapper').then(({ default: ChannelMapper }) => {
+        new ChannelMapper({
             serverId: ApiClient.serverInfo().Id,
             providerId: providerId
         }).show();
@@ -191,7 +192,7 @@ function deleteProvider(page, id) {
 }
 
 function getTunerName(providerId) {
-    switch (providerId = providerId.toLowerCase()) {
+    switch (providerId.toLowerCase()) {
         case 'm3u':
             return 'M3U';
         case 'hdhomerun':
@@ -206,7 +207,7 @@ function getTunerName(providerId) {
 }
 
 function getProviderName(providerId) {
-    switch (providerId = providerId.toLowerCase()) {
+    switch (providerId.toLowerCase()) {
         case 'schedulesdirect':
             return 'Schedules Direct';
         case 'xmltv':
@@ -217,11 +218,11 @@ function getProviderName(providerId) {
 }
 
 function getProviderConfigurationUrl(providerId) {
-    switch (providerId = providerId.toLowerCase()) {
+    switch (providerId.toLowerCase()) {
         case 'xmltv':
-            return '#/livetvguideprovider.html?type=xmltv';
+            return '#/dashboard/livetv/guide?type=xmltv';
         case 'schedulesdirect':
-            return '#/livetvguideprovider.html?type=schedulesdirect';
+            return '#/dashboard/livetv/guide?type=schedulesdirect';
     }
 }
 
@@ -236,7 +237,7 @@ function addProvider(button) {
         id: 'xmltv'
     });
 
-    import('../components/actionSheet/actionSheet').then(({default: actionsheet}) => {
+    import('../components/actionSheet/actionSheet').then(({ default: actionsheet }) => {
         actionsheet.show({
             items: menuItems,
             positionTo: button,
@@ -248,7 +249,7 @@ function addProvider(button) {
 }
 
 function addDevice() {
-    Dashboard.navigate('livetvtuner.html');
+    Dashboard.navigate('dashboard/livetv/tuner');
 }
 
 function showDeviceMenu(button, tunerDeviceId) {
@@ -262,7 +263,7 @@ function showDeviceMenu(button, tunerDeviceId) {
         id: 'edit'
     });
 
-    import('../components/actionSheet/actionSheet').then(({default: actionsheet}) => {
+    import('../components/actionSheet/actionSheet').then(({ default: actionsheet }) => {
         actionsheet.show({
             items: items,
             positionTo: button
@@ -273,7 +274,7 @@ function showDeviceMenu(button, tunerDeviceId) {
                     break;
 
                 case 'edit':
-                    Dashboard.navigate('livetvtuner.html?id=' + tunerDeviceId);
+                    Dashboard.navigate('dashboard/livetv/tuner?id=' + tunerDeviceId);
             }
         });
     });
@@ -289,7 +290,7 @@ function onDevicesListClick(e) {
         if (btnCardOptions) {
             showDeviceMenu(btnCardOptions, id);
         } else {
-            Dashboard.navigate('livetvtuner.html?id=' + id);
+            Dashboard.navigate('dashboard/livetv/tuner?id=' + id);
         }
     }
 }
