@@ -1,7 +1,7 @@
 import Package from '../../package.json';
 import appSettings from '../scripts/settings/appSettings';
 import browser from '../scripts/browser';
-import { Events } from 'jellyfin-apiclient';
+import Events from '../utils/events.ts';
 import * as htmlMediaHelper from '../components/htmlMediaHelper';
 import * as webSettings from '../scripts/settings/webSettings';
 import globalize from '../scripts/globalize';
@@ -16,10 +16,13 @@ function getBaseProfileOptions(item) {
         if (browser.edge) {
             disableHlsVideoAudioCodecs.push('mp3');
         }
-
-        disableHlsVideoAudioCodecs.push('ac3');
-        disableHlsVideoAudioCodecs.push('eac3');
-        disableHlsVideoAudioCodecs.push('opus');
+        if (!browser.edgeChromium) {
+            disableHlsVideoAudioCodecs.push('ac3');
+            disableHlsVideoAudioCodecs.push('eac3');
+        }
+        if (!(browser.chrome || browser.edgeChromium || browser.firefox)) {
+            disableHlsVideoAudioCodecs.push('opus');
+        }
     }
 
     return {
@@ -63,22 +66,13 @@ function getDeviceProfile(item) {
     });
 }
 
-function escapeRegExp(str) {
-    return str.replace(/([.*+?^=!:${}()|[\]/\\])/g, '\\$1');
-}
-
-function replaceAll(originalString, strReplace, strWith) {
-    const strReplace2 = escapeRegExp(strReplace);
-    const reg = new RegExp(strReplace2, 'ig');
-    return originalString.replace(reg, strWith);
-}
-
 function generateDeviceId() {
     const keys = [];
 
-    if (keys.push(navigator.userAgent), keys.push(new Date().getTime()), window.btoa) {
-        const result = replaceAll(btoa(keys.join('|')), '=', '1');
-        return result;
+    keys.push(navigator.userAgent);
+    keys.push(new Date().getTime());
+    if (window.btoa) {
+        return btoa(keys.join('|')).replaceAll('=', '1');
     }
 
     return new Date().getTime();
@@ -165,11 +159,7 @@ function supportsHtmlMediaAutoplay() {
         return true;
     }
 
-    if (browser.mobile) {
-        return false;
-    }
-
-    return true;
+    return !browser.mobile;
 }
 
 function supportsCue() {
@@ -238,10 +228,6 @@ const supportedFeatures = function () {
     if (supportsHtmlMediaAutoplay()) {
         features.push('htmlaudioautoplay');
         features.push('htmlvideoautoplay');
-    }
-
-    if (browser.edgeUwp) {
-        features.push('sync');
     }
 
     if (supportsFullscreen()) {
@@ -322,8 +308,8 @@ function askForExit() {
         exitPromise = actionsheet.show({
             title: globalize.translate('MessageConfirmAppExit'),
             items: [
-                {id: 'yes', name: globalize.translate('Yes')},
-                {id: 'no', name: globalize.translate('No')}
+                { id: 'yes', name: globalize.translate('Yes') },
+                { id: 'no', name: globalize.translate('No') }
             ]
         }).then(function (value) {
             if (value === 'yes') {
@@ -379,20 +365,20 @@ export const appHost = {
         };
     },
     deviceName: function () {
-        return window.NativeShell?.AppHost?.deviceName
-            ? window.NativeShell.AppHost.deviceName() : getDeviceName();
+        return window.NativeShell?.AppHost?.deviceName ?
+            window.NativeShell.AppHost.deviceName() : getDeviceName();
     },
     deviceId: function () {
-        return window.NativeShell?.AppHost?.deviceId
-            ? window.NativeShell.AppHost.deviceId() : getDeviceId();
+        return window.NativeShell?.AppHost?.deviceId ?
+            window.NativeShell.AppHost.deviceId() : getDeviceId();
     },
     appName: function () {
-        return window.NativeShell?.AppHost?.appName
-            ? window.NativeShell.AppHost.appName() : appName;
+        return window.NativeShell?.AppHost?.appName ?
+            window.NativeShell.AppHost.appName() : appName;
     },
     appVersion: function () {
-        return window.NativeShell?.AppHost?.appVersion
-            ? window.NativeShell.AppHost.appVersion() : Package.version;
+        return window.NativeShell?.AppHost?.appVersion ?
+            window.NativeShell.AppHost.appVersion() : Package.version;
     },
     getPushTokenInfo: function () {
         return {};

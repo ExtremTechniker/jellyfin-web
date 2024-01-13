@@ -5,7 +5,7 @@
                 <div class="verticalSection">
                     <div class="sectionTitleContainer flex align-items-center">
                         <h2 class="sectionTitle">${Transcoding}</h2>
-                        <a is="emby-linkbutton" rel="noopener noreferrer" class="raised button-alt headerHelpButton" target="_blank" href="https://docs.jellyfin.org/general/server/transcoding.html">${Help}</a>
+                        <a is="emby-linkbutton" rel="noopener noreferrer" class="raised button-alt headerHelpButton" target="_blank" href="https://jellyfin.org/docs/general/server/transcoding">${Help}</a>
                     </div>
                 </div>
 
@@ -20,7 +20,7 @@
                         <option value="v4l2m2m">Video4Linux2 (V4L2)</option>
                     </select>
                     <div class="fieldDescription">
-                        <a is="emby-linkbutton" rel="noopener noreferrer" class="button-link" href="https://docs.jellyfin.org/general/administration/hardware-acceleration.html" target="_blank">${LabelHardwareAccelerationTypeHelp}</a>
+                        <a is="emby-linkbutton" rel="noopener noreferrer" class="button-link" href="https://jellyfin.org/docs/general/administration/hardware-acceleration" target="_blank">${LabelHardwareAccelerationTypeHelp}</a>
                     </div>
                 </div>
 
@@ -83,6 +83,7 @@
                             <input type="checkbox" is="emby-checkbox" id="chkEnhancedNvdecDecoder" />
                             <span>${EnableEnhancedNvdecDecoder}</span>
                         </label>
+                        <div class="fieldDescription checkboxFieldDescription">${EnableEnhancedNvdecDecoderHelp}</div>
                     </div>
 
                     <div class="checkboxListContainer hide fldSysNativeHwDecoder">
@@ -123,6 +124,12 @@
                             <span>${AllowHevcEncoding}</span>
                         </label>
                     </div>
+                    <div class="checkboxList">
+                        <label>
+                            <input type="checkbox" is="emby-checkbox" id="chkAllowAv1Encoding" />
+                            <span>${AllowAv1Encoding}</span>
+                        </label>
+                    </div>
                 </div>
 
                 <div class="vppTonemappingOptions hide">
@@ -153,7 +160,7 @@
                     </div>
                     <div class="selectContainer">
                         <select is="emby-select" id="selectTonemappingAlgorithm" label="${LabelTonemappingAlgorithm}">
-                            <option value="none">None</option>
+                            <option value="none">${None}</option>
                             <option value="clip">Clip</option>
                             <option value="linear">Linear</option>
                             <option value="gamma">Gamma</option>
@@ -223,7 +230,7 @@
                 <div class="inputContainer fldEncoderPath">
                     <div style="display: flex; align-items: center;">
                         <div style="flex-grow:1;">
-                            <input is="emby-input" class="txtEncoderPath" label="${LabelffmpegPath}" autocomplete="off" />
+                            <input is="emby-input" class="txtEncoderPath" label="${LabelffmpegPath}" autocomplete="off" dir="ltr" />
                         </div>
                         <button type="button" is="paper-icon-button-light" id="btnSelectEncoderPath" class="emby-input-iconbutton"><span class="material-icons search" aria-hidden="true"></span></button>
                     </div>
@@ -234,7 +241,7 @@
                 <div class="inputContainer">
                     <div style="display: flex; align-items: center;">
                         <div style="flex-grow:1;">
-                            <input is="emby-input" id="txtTranscodingTempPath" label="${LabelTranscodePath}" autocomplete="off" />
+                            <input is="emby-input" id="txtTranscodingTempPath" label="${LabelTranscodePath}" autocomplete="off" dir="ltr" />
                         </div>
                         <button type="button" is="paper-icon-button-light" id="btnSelectTranscodingTempPath" class="emby-input-iconbutton"><span class="material-icons search" aria-hidden="true"></span></button>
                     </div>
@@ -243,11 +250,13 @@
                 <div class="inputContainer">
                     <div style="display: flex; align-items: center;">
                         <div style="flex-grow:1;">
-                            <input is="emby-input" id="txtFallbackFontPath" label="${LabelFallbackFontPath}" autocomplete="off" />
+                            <input is="emby-input" id="txtFallbackFontPath" label="${LabelFallbackFontPath}" autocomplete="off" dir="ltr" />
                         </div>
                         <button type="button" is="paper-icon-button-light" id="btnSelectFallbackFontPath" class="emby-input-iconbutton"><span class="material-icons search" aria-hidden="true"></span></button>
                     </div>
-                    <div class="fieldDescription">${LabelFallbackFontPathHelp}</div>
+                    <div class="fieldDescription">
+                        <a is="emby-linkbutton" rel="noopener noreferrer" class="button-link" href="https://jellyfin.org/docs/general/administration/configuration#fonts" target="_blank">${LabelFallbackFontPathHelp}</a>
+                    </div>
                 </div>
                 <div class="checkboxContainer checkboxContainer-withDescription">
                     <label>
@@ -256,9 +265,24 @@
                     </label>
                     <div class="fieldDescription checkboxFieldDescription">${EnableFallbackFontHelp}</div>
                 </div>
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label>
+                        <input is="emby-checkbox" type="checkbox" id="chkEnableAudioVbr" />
+                        <span>${LabelEnableAudioVbr}</span>
+                    </label>
+                    <div class="fieldDescription checkboxFieldDescription">${LabelEnableAudioVbrHelp}</div>
+                </div>
                 <div class="inputContainer">
                     <input is="emby-input" type="number" id="txtDownMixAudioBoost" pattern="[0-9]*" required="required" min=".5" max="3" step=".1" label="${LabelDownMixAudioScale}" />
                     <div class="fieldDescription">${LabelDownMixAudioScaleHelp}</div>
+                </div>
+                <div class="selectContainer">
+                    <select is="emby-select" id="selectStereoDownmixAlgorithm" label="${LabelStereoDownmixAlgorithm}">
+                        <option value="None">${None}</option>
+                        <option value="Dave750">Dave750</option>
+                        <option value="NightmodeDialogue">NightmodeDialogue</option>
+                    </select>
+                    <div class="fieldDescription">${StereoDownmixAlgorithmHelp}</div>
                 </div>
                 <div class="inputContainer">
                     <input is="emby-input" type="number" id="txtMaxMuxingQueueSize" pattern="[0-9]*" required="required" min="128" max="2147483647" step="1" label="${LabelMaxMuxingQueueSize}" />
@@ -317,6 +341,24 @@
                         <span>${AllowFfmpegThrottling}</span>
                     </label>
                     <div class="fieldDescription checkboxFieldDescription">${AllowFfmpegThrottlingHelp}</div>
+                </div>
+
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label>
+                        <input is="emby-checkbox" type="checkbox" id="chkEnableSegmentDeletion" />
+                        <span>${AllowSegmentDeletion}</span>
+                    </label>
+                    <div class="fieldDescription checkboxFieldDescription">${AllowSegmentDeletionHelp}</div>
+                </div>
+
+                <div class="inputContainer">
+                    <input is="emby-input" type="number" id="txtThrottleDelaySeconds" pattern="[0-9]*" min="10" max="3600" step="1" label="${LabelThrottleDelaySeconds}" />
+                    <div class="fieldDescription">${LabelThrottleDelaySecondsHelp}</div>
+                </div>
+
+                <div class="inputContainer">
+                    <input is="emby-input" type="number" id="txtSegmentKeepSeconds" pattern="[0-9]*" min="15" max="3600" step="1" label="${LabelSegmentKeepSeconds}" />
+                    <div class="fieldDescription">${LabelSegmentKeepSecondsHelp}</div>
                 </div>
 
                 <div>

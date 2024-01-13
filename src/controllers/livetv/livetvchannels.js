@@ -2,8 +2,9 @@ import cardBuilder from '../../components/cardbuilder/cardBuilder';
 import imageLoader from '../../components/images/imageLoader';
 import libraryBrowser from '../../scripts/libraryBrowser';
 import loading from '../../components/loading/loading';
-import { Events } from 'jellyfin-apiclient';
 import * as userSettings from '../../scripts/settings/userSettings';
+import Events from '../../utils/events.ts';
+
 import '../../elements/emby-itemscontainer/emby-itemscontainer';
 
 export default function (view, params, tabContent) {
@@ -99,7 +100,7 @@ export default function (view, params, tabContent) {
     }
 
     function showFilterMenu(context) {
-        import('../../components/filterdialog/filterdialog').then(({default: FilterDialog}) => {
+        import('../../components/filterdialog/filterdialog').then(({ default: FilterDialog }) => {
             const filterDialog = new FilterDialog({
                 query: getQuery(),
                 mode: 'livetvchannels',
@@ -123,7 +124,7 @@ export default function (view, params, tabContent) {
             loading.hide();
             isLoading = false;
 
-            import('../../components/autoFocuser').then(({default: autoFocuser}) => {
+            import('../../components/autoFocuser').then(({ default: autoFocuser }) => {
                 autoFocuser.autoFocus(context);
             });
         });

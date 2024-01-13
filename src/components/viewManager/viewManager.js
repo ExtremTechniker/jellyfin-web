@@ -21,9 +21,10 @@ viewContainer.setOnBeforeChange(function (newView, isRestored, options) {
         newView.initComplete = true;
 
         if (typeof options.controllerFactory === 'function') {
-            new options.controllerFactory(newView, eventDetail.detail.params, eventDetail);
+            // eslint-disable-next-line new-cap
+            new options.controllerFactory(newView, eventDetail.detail.params);
         } else if (options.controllerFactory && typeof options.controllerFactory.default === 'function') {
-            new options.controllerFactory.default(newView, eventDetail.detail.params, eventDetail);
+            new options.controllerFactory.default(newView, eventDetail.detail.params);
         }
 
         if (!options.controllerFactory || dispatchPageEvents) {
@@ -97,15 +98,15 @@ function dispatchViewEvent(view, eventInfo, eventName, isCancellable) {
     return eventResult;
 }
 
-function getViewEventDetail(view, {state, url, options = {}}, isRestored) {
+function getViewEventDetail(view, { state, url, options = {} }, isRestored) {
     const index = url.indexOf('?');
     // eslint-disable-next-line compat/compat
     const searchParams = new URLSearchParams(url.substring(index + 1));
     const params = {};
 
-    searchParams.forEach((value, key) =>
-        params[key] = value
-    );
+    searchParams.forEach((value, key) => {
+        params[key] = value;
+    });
 
     return {
         detail: {
@@ -147,6 +148,15 @@ class ViewManager {
         });
     }
 
+    hideView() {
+        if (currentView) {
+            dispatchViewEvent(currentView, null, 'viewbeforehide');
+            dispatchViewEvent(currentView, null, 'viewhide');
+            currentView.classList.add('hide');
+            currentView = null;
+        }
+    }
+
     tryRestoreView(options, onViewChanging) {
         if (options.cancel) {
             return Promise.reject({ cancelled: true });
@@ -158,7 +168,7 @@ class ViewManager {
         }
 
         return viewContainer.tryRestoreView(options).then(function (view) {
-            onViewChanging();
+            if (onViewChanging) onViewChanging();
             onViewChange(view, options, true);
         });
     }

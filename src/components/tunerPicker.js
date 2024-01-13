@@ -26,7 +26,8 @@ function getEditorHtml() {
     html += '<div is="emby-itemscontainer" class="results vertical-wrap">';
     html += '</div>';
     html += '</div>';
-    return html += '</div>';
+    html += '</div>';
+    return html;
 }
 
 function getDeviceHtml(device) {
@@ -61,11 +62,12 @@ function getDeviceHtml(device) {
     html += '</div>';
     html += '</div>';
     html += '</div>';
-    return html += '</button>';
+    html += '</button>';
+    return html;
 }
 
 function getTunerName(providerId) {
-    switch (providerId = providerId.toLowerCase()) {
+    switch (providerId.toLowerCase()) {
         case 'm3u':
             return 'M3U';
 
@@ -118,7 +120,7 @@ function discoverDevices(view) {
     });
 }
 
-function tunerPicker() {
+function TunerPicker() {
     this.show = function () {
         const dialogOptions = {
             removeOnClose: true,
@@ -180,4 +182,4 @@ function tunerPicker() {
 
 let currentDevices = [];
 
-export default tunerPicker;
+export default TunerPicker;

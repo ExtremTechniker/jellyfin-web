@@ -42,8 +42,14 @@ export default {
      * @returns true on success
      */
     downloadFiles(items) {
+        if (window.NativeShell?.downloadFiles) {
+            window.NativeShell.downloadFiles(items);
+            return true;
+        }
         if (window.NativeShell?.downloadFile) {
-            items.forEach(item => window.NativeShell.downloadFile(item));
+            items.forEach(item => {
+                window.NativeShell.downloadFile(item);
+            });
             return true;
         }
         return false;

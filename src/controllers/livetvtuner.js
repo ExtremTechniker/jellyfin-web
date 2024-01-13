@@ -5,7 +5,8 @@ import '../elements/emby-input/emby-input';
 import '../elements/emby-button/emby-button';
 import '../elements/emby-checkbox/emby-checkbox';
 import '../elements/emby-select/emby-select';
-import Dashboard from '../scripts/clientUtils';
+import Dashboard from '../utils/dashboard';
+import { getParameterByName } from '../utils/url.ts';
 
 function isM3uVariant(type) {
     return ['nextpvr'].indexOf(type || '') !== -1;
@@ -60,6 +61,7 @@ function fillTunerHostInfo(view, info) {
     view.querySelector('.chkFavorite').checked = info.ImportFavoritesOnly;
     view.querySelector('.chkTranscode').checked = info.AllowHWTranscoding;
     view.querySelector('.chkStreamLoop').checked = info.EnableStreamLooping;
+    view.querySelector('.chkIgnoreDts').checked = info.IgnoreDts;
     view.querySelector('.txtTunerCount').value = info.TunerCount || '0';
 }
 
@@ -74,7 +76,8 @@ function submitForm(page) {
         TunerCount: page.querySelector('.txtTunerCount').value || 0,
         ImportFavoritesOnly: page.querySelector('.chkFavorite').checked,
         AllowHWTranscoding: page.querySelector('.chkTranscode').checked,
-        EnableStreamLooping: page.querySelector('.chkStreamLoop').checked
+        EnableStreamLooping: page.querySelector('.chkStreamLoop').checked,
+        IgnoreDts: page.querySelector('.chkIgnoreDts').checked
     };
 
     if (isM3uVariant(info.Type)) {
@@ -93,7 +96,7 @@ function submitForm(page) {
         contentType: 'application/json'
     }).then(function () {
         Dashboard.processServerConfigurationUpdateResult();
-        Dashboard.navigate('livetvstatus.html');
+        Dashboard.navigate('dashboard/livetv');
     }, function () {
         loading.hide();
         Dashboard.alert({
@@ -103,8 +106,8 @@ function submitForm(page) {
 }
 
 function getDetectedDevice() {
-    return import('../components/tunerPicker').then(({default: tunerPicker}) => {
-        return new tunerPicker().show({
+    return import('../components/tunerPicker').then(({ default: TunerPicker }) => {
+        return new TunerPicker().show({
             serverId: ApiClient.serverId()
         });
     });
@@ -119,6 +122,7 @@ function onTypeChange() {
     const supportsTunerIpAddress = value === 'hdhomerun';
     const supportsTunerFileOrUrl = value === 'm3u';
     const supportsStreamLooping = value === 'm3u';
+    const supportsIgnoreDts = value === 'm3u';
     const supportsTunerCount = value === 'm3u';
     const supportsUserAgent = value === 'm3u';
     const suppportsSubmit = value !== 'other';
@@ -167,6 +171,12 @@ function onTypeChange() {
         view.querySelector('.fldStreamLoop').classList.add('hide');
     }
 
+    if (supportsIgnoreDts) {
+        view.querySelector('.fldIgnoreDts').classList.remove('hide');
+    } else {
+        view.querySelector('.fldIgnoreDts').classList.add('hide');
+    }
+
     if (supportsTunerCount) {
         view.querySelector('.fldTunerCount').classList.remove('hide');
         view.querySelector('.txtTunerCount').setAttribute('required', 'required');
@@ -212,7 +222,7 @@ export default function (view, params) {
         });
     });
     view.querySelector('.btnSelectPath').addEventListener('click', function () {
-        import('../components/directorybrowser/directorybrowser').then(({default: DirectoryBrowser}) => {
+        import('../components/directorybrowser/directorybrowser').then(({ default: DirectoryBrowser }) => {
             const picker = new DirectoryBrowser();
             picker.show({
                 includeFiles: true,

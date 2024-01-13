@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html class="preload">
+<html class="preload" dir="ltr">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
@@ -14,7 +14,7 @@
     <meta name="referrer" content="no-referrer">
     <meta property="og:title" content="Jellyfin">
     <meta property="og:site_name" content="Jellyfin">
-    <meta property="og:url" content="http://jellyfin.org">
+    <meta property="og:url" content="https://jellyfin.org">
     <meta property="og:description" content="The Free Software Media System">
     <meta property="og:type" content="article">
 
@@ -112,20 +112,18 @@
         .mainDrawerHandle {
             position: fixed;
             top: 0;
-            left: 0;
             bottom: 0;
             z-index: 1;
             width: 0.8em;
+            padding-left: env(safe-area-inset-left);
         }
 
-        @-webkit-keyframes fadein {
-            from {
-                opacity: 0;
-            }
+        [dir="ltr"] .mainDrawerHandle {
+            left: 0;
+        }
 
-            to {
-                opacity: 1;
-            }
+        [dir="rtl"] .mainDrawerHandle {
+            left: 0;
         }
 
         @keyframes fadein {
@@ -139,7 +137,6 @@
         }
 
         .splashLogo {
-            -webkit-animation: fadein 0.5s;
             animation: fadein 0.5s;
             width: 30%;
             height: 30%;
@@ -150,7 +147,6 @@
             position: fixed;
             top: 50%;
             left: 50%;
-            -webkit-transform: translate(-50%, -50%);
             transform: translate(-50%, -50%);
         }
 
@@ -162,16 +158,9 @@
         }
     </style>
 </head>
-<body>
-    <div class="backdropContainer"></div>
-    <div class="backgroundContainer"></div>
-    <div class="mainDrawer hide">
-        <div class="mainDrawer-scrollContainer scrollContainer focuscontainer-y"></div>
-    </div>
-    <div class="skinHeader focuscontainer-x"></div>
-    <div class="mainAnimatedPages skinBody">
+<body dir="ltr">
+    <div id="reactRoot">
         <div class="splashLogo"></div>
     </div>
-    <div class="mainDrawerHandle"></div>
 </body>
 </html>

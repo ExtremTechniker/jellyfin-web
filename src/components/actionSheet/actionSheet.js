@@ -6,7 +6,7 @@ import dom from '../../scripts/dom';
 import '../../elements/emby-button/emby-button';
 import './actionSheet.scss';
 import 'material-design-icons-iconfont';
-import '../../assets/css/scrollstyles.scss';
+import '../../styles/scrollstyles.scss';
 import '../../components/listview/listview.scss';
 
 function getOffsets(elems) {
@@ -301,7 +301,7 @@ export function show(options) {
 
                     resolve(selectedId);
                 } else {
-                    reject();
+                    reject('ActionSheet closed without resolving');
                 }
             }
         });

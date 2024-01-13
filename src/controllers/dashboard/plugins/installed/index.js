@@ -2,11 +2,11 @@ import loading from '../../../../components/loading/loading';
 import libraryMenu from '../../../../scripts/libraryMenu';
 import dom from '../../../../scripts/dom';
 import globalize from '../../../../scripts/globalize';
-import * as cardBuilder from '../../../../components/cardbuilder/cardBuilder.js';
 import '../../../../components/cardbuilder/card.scss';
 import '../../../../elements/emby-button/emby-button';
-import Dashboard, { pageIdOn } from '../../../../scripts/clientUtils';
+import Dashboard, { pageIdOn } from '../../../../utils/dashboard';
 import confirm from '../../../../components/confirm/confirm';
+import { getDefaultBackgroundClass } from '../../../../components/cardbuilder/cardBuilderUtils';
 
 function deletePlugin(page, uniqueid, version, name) {
     const msg = globalize.translate('UninstallPluginConfirmation', name);
@@ -73,7 +73,7 @@ function getPluginCardHtml(plugin, pluginConfigurationPages) {
         const imageUrl = ApiClient.getUrl(`/Plugins/${plugin.Id}/${plugin.Version}/Image`);
         html += `<img src="${imageUrl}" style="width:100%" />`;
     } else {
-        html += `<div class="cardImage flex align-items-center justify-content-center ${cardBuilder.getDefaultBackgroundClass()}">`;
+        html += `<div class="cardImage flex align-items-center justify-content-center ${getDefaultBackgroundClass()}">`;
         html += '<span class="cardImageIcon material-icons extension" aria-hidden="true"></span>';
         html += '</div>';
     }
@@ -83,7 +83,11 @@ function getPluginCardHtml(plugin, pluginConfigurationPages) {
     html += '<div class="cardFooter">';
 
     if (configPage || plugin.CanUninstall) {
-        html += '<div style="text-align:right; float:right;padding-top:5px;">';
+        if (globalize.getIsRTL()) {
+            html += '<div style="text-align:left; float:left;padding-top:5px;">';
+        } else {
+            html += '<div style="text-align:right; float:right;padding-top:5px;">';
+        }
         html += '<button type="button" is="paper-icon-button-light" class="btnCardMenu autoSize"><span class="material-icons more_vert" aria-hidden="true"></span></button>';
         html += '</div>';
     }
@@ -109,7 +113,6 @@ function populateList(page, plugins, pluginConfigurationPages) {
         if (plugin1.Name > plugin2.Name) {
             return 1;
         }
-
         return -1;
     });
 
@@ -127,10 +130,16 @@ function populateList(page, plugins, pluginConfigurationPages) {
     } else {
         html += '<div class="centerMessage">';
         html += '<h1>' + globalize.translate('MessageNoPluginsInstalled') + '</h1>';
-        html += '<p><a is="emby-linkbutton" class="button-link" href="#!/availableplugins.html">';
+        html += '<p><a is="emby-linkbutton" class="button-link" href="#/dashboard/plugins/catalog">';
         html += globalize.translate('MessageBrowsePluginCatalog');
         html += '</a></p>';
         html += '</div>';
+    }
+
+    // add search box listener
+    const searchBar = page.querySelector('#txtSearchPlugins');
+    if (searchBar) {
+        searchBar.addEventListener('input', () => onFilterType(page, searchBar));
     }
 
     installedPluginsElement.innerHTML = html;
@@ -212,13 +221,13 @@ function reloadList(page) {
 
 function getTabs() {
     return [{
-        href: '#!/installedplugins.html',
+        href: '#/dashboard/plugins',
         name: globalize.translate('TabMyPlugins')
     }, {
-        href: '#!/availableplugins.html',
+        href: '#/dashboard/plugins/catalog',
         name: globalize.translate('TabCatalog')
     }, {
-        href: '#!/repositories.html',
+        href: '#/dashboard/plugins/repositories',
         name: globalize.translate('TabRepositories')
     }];
 }
@@ -232,6 +241,17 @@ function onInstalledPluginsClick(e) {
         const btnCardMenu = dom.parentWithClass(e.target, 'btnCardMenu');
         if (btnCardMenu) {
             showPluginMenu(dom.parentWithClass(btnCardMenu, 'page'), btnCardMenu);
+        }
+    }
+}
+
+function onFilterType(page, searchBar) {
+    const filter = searchBar.value.toLowerCase();
+    for (const card of page.querySelectorAll('.card')) {
+        if (filter && filter != '' && !card.textContent.toLowerCase().includes(filter)) {
+            card.style.display = 'none';
+        } else {
+            card.style.display = 'unset';
         }
     }
 }

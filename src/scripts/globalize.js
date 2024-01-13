@@ -1,253 +1,292 @@
-import { Events } from 'jellyfin-apiclient';
 import isEmpty from 'lodash-es/isEmpty';
 
 import { currentSettings as userSettings } from './settings/userSettings';
+import Events from '../utils/events.ts';
+import { updateLocale } from '../utils/dateFnsLocale.ts';
 
-/* eslint-disable indent */
+const Direction = {
+    rtl: 'rtl',
+    ltr: 'ltr'
+};
 
-    const fallbackCulture = 'en-us';
+const fallbackCulture = 'en-us';
+const RTL_LANGS = ['ar', 'fa', 'ur', 'he'];
 
-    const allTranslations = {};
-    let currentCulture;
-    let currentDateTimeCulture;
+const allTranslations = {};
+let currentCulture;
+let currentDateTimeCulture;
+let isRTL = false;
 
-    export function getCurrentLocale() {
-        return currentCulture;
+export function getCurrentLocale() {
+    return currentCulture;
+}
+
+export function getCurrentDateTimeLocale() {
+    return currentDateTimeCulture;
+}
+
+function getDefaultLanguage() {
+    const culture = document.documentElement.getAttribute('data-culture');
+    if (culture) {
+        return culture;
     }
 
-    export function getCurrentDateTimeLocale() {
-        return currentDateTimeCulture;
+    if (navigator.language) {
+        return navigator.language;
+    }
+    if (navigator.userLanguage) {
+        return navigator.userLanguage;
+    }
+    if (navigator.languages?.length) {
+        return navigator.languages[0];
     }
 
-    function getDefaultLanguage() {
-        const culture = document.documentElement.getAttribute('data-culture');
-        if (culture) {
-            return culture;
-        }
+    return fallbackCulture;
+}
 
-        if (navigator.language) {
-            return navigator.language;
-        }
-        if (navigator.userLanguage) {
-            return navigator.userLanguage;
-        }
-        if (navigator.languages && navigator.languages.length) {
-            return navigator.languages[0];
-        }
+export function getIsRTL() {
+    return isRTL;
+}
 
-        return fallbackCulture;
+function checkAndProcessDir(culture) {
+    isRTL = false;
+    console.log(culture);
+    for (const lang of RTL_LANGS) {
+        if (culture.includes(lang)) {
+            isRTL = true;
+            break;
+        }
     }
 
-    export function updateCurrentCulture() {
-        let culture;
-        try {
-            culture = userSettings.language();
-        } catch (err) {
-            console.error('no language set in user settings');
-        }
-        culture = culture || getDefaultLanguage();
+    setDocumentDirection(isRTL ? Direction.rtl : Direction.ltr);
+}
 
-        currentCulture = normalizeLocaleName(culture);
+function setDocumentDirection(direction) {
+    document.getElementsByTagName('body')[0].setAttribute('dir', direction);
+    document.getElementsByTagName('html')[0].setAttribute('dir', direction);
+    if (direction === Direction.rtl) {
+        import('../styles/rtl.scss');
+    }
+}
 
-        let dateTimeCulture;
-        try {
-            dateTimeCulture = userSettings.dateTimeLocale();
-        } catch (err) {
-            console.error('no date format set in user settings');
-        }
+export function getIsElementRTL(element) {
+    if (window.getComputedStyle) { // all browsers
+        return window.getComputedStyle(element, null).getPropertyValue('direction') == 'rtl';
+    }
+    return element.currentStyle.direction == 'rtl';
+}
 
-        if (dateTimeCulture) {
-            currentDateTimeCulture = normalizeLocaleName(dateTimeCulture);
-        } else {
-            currentDateTimeCulture = currentCulture;
-        }
-        ensureTranslations(currentCulture);
+export function updateCurrentCulture() {
+    let culture;
+    try {
+        culture = userSettings.language();
+    } catch (err) {
+        console.error('no language set in user settings');
+    }
+    culture = culture || getDefaultLanguage();
+    checkAndProcessDir(culture);
+
+    currentCulture = normalizeLocaleName(culture);
+
+    document.documentElement.setAttribute('lang', currentCulture);
+
+    let dateTimeCulture;
+    try {
+        dateTimeCulture = userSettings.dateTimeLocale();
+    } catch (err) {
+        console.error('no date format set in user settings');
     }
 
-    function ensureTranslations(culture) {
+    if (dateTimeCulture) {
+        currentDateTimeCulture = normalizeLocaleName(dateTimeCulture);
+    } else {
+        currentDateTimeCulture = currentCulture;
+    }
+    updateLocale(currentDateTimeCulture);
+
+    ensureTranslations(currentCulture);
+}
+
+function ensureTranslations(culture) {
+    for (const i in allTranslations) {
+        ensureTranslation(allTranslations[i], culture);
+    }
+    if (culture !== fallbackCulture) {
         for (const i in allTranslations) {
-            ensureTranslation(allTranslations[i], culture);
-        }
-        if (culture !== fallbackCulture) {
-            for (const i in allTranslations) {
-                ensureTranslation(allTranslations[i], fallbackCulture);
-            }
+            ensureTranslation(allTranslations[i], fallbackCulture);
         }
     }
+}
 
-    function ensureTranslation(translationInfo, culture) {
-        if (translationInfo.dictionaries[culture]) {
-            return Promise.resolve();
-        }
-
-        return loadTranslation(translationInfo.translations, culture).then(function (dictionary) {
-            translationInfo.dictionaries[culture] = dictionary;
-        });
+function ensureTranslation(translationInfo, culture) {
+    if (translationInfo.dictionaries[culture]) {
+        return Promise.resolve();
     }
 
-    function normalizeLocaleName(culture) {
-        return culture.replace('_', '-').toLowerCase();
+    return loadTranslation(translationInfo.translations, culture).then(function (dictionary) {
+        translationInfo.dictionaries[culture] = dictionary;
+    });
+}
+
+function normalizeLocaleName(culture) {
+    return culture.replace('_', '-').toLowerCase();
+}
+
+function getDictionary(module, locale) {
+    if (!module) {
+        module = defaultModule();
     }
 
-    function getDictionary(module, locale) {
-        if (!module) {
-            module = defaultModule();
-        }
-
-        const translations = allTranslations[module];
-        if (!translations) {
-            return {};
-        }
-
-        return translations.dictionaries[locale];
+    const translations = allTranslations[module];
+    if (!translations) {
+        return {};
     }
 
-    export function register(options) {
-        allTranslations[options.name] = {
-            translations: options.strings || options.translations,
-            dictionaries: {}
-        };
+    return translations.dictionaries[locale];
+}
+
+export function register(options) {
+    allTranslations[options.name] = {
+        translations: options.strings || options.translations,
+        dictionaries: {}
+    };
+}
+
+export function loadStrings(options) {
+    const locale = getCurrentLocale();
+    const promises = [];
+    let optionsName;
+    if (typeof options === 'string') {
+        optionsName = options;
+    } else {
+        optionsName = options.name;
+        register(options);
     }
+    promises.push(ensureTranslation(allTranslations[optionsName], locale));
+    promises.push(ensureTranslation(allTranslations[optionsName], fallbackCulture));
+    return Promise.all(promises);
+}
 
-    export function loadStrings(options) {
-        const locale = getCurrentLocale();
-        const promises = [];
-        let optionsName;
-        if (typeof options === 'string') {
-            optionsName = options;
-        } else {
-            optionsName = options.name;
-            register(options);
-        }
-        promises.push(ensureTranslation(allTranslations[optionsName], locale));
-        promises.push(ensureTranslation(allTranslations[optionsName], fallbackCulture));
-        return Promise.all(promises);
-    }
+function loadTranslation(translations, lang) {
+    lang = normalizeLocaleName(lang);
 
-    function loadTranslation(translations, lang) {
-        lang = normalizeLocaleName(lang);
+    let filtered = translations.filter(function (t) {
+        return normalizeLocaleName(t.lang) === lang;
+    });
 
-        let filtered = translations.filter(function (t) {
+    if (!filtered.length) {
+        lang = lang.replace(/-.*/, '');
+
+        filtered = translations.filter(function (t) {
             return normalizeLocaleName(t.lang) === lang;
         });
 
         if (!filtered.length) {
-            lang = lang.replace(/-.*/, '');
-
             filtered = translations.filter(function (t) {
-                return normalizeLocaleName(t.lang) === lang;
+                return normalizeLocaleName(t.lang) === fallbackCulture;
             });
+        }
+    }
 
-            if (!filtered.length) {
-                filtered = translations.filter(function (t) {
-                    return normalizeLocaleName(t.lang) === fallbackCulture;
-                });
-            }
+    return new Promise(function (resolve) {
+        if (!filtered.length) {
+            resolve();
+            return;
         }
 
-        return new Promise(function (resolve) {
-            if (!filtered.length) {
-                resolve();
-                return;
-            }
+        const url = filtered[0].path;
 
-            const url = filtered[0].path;
-
-            import(`../strings/${url}`).then((fileContent) => {
-                resolve(fileContent);
-            }).catch(() => {
-                resolve({});
-            });
+        import(/* webpackChunkName: "[request]" */ `../strings/${url}`).then((fileContent) => {
+            resolve(fileContent);
+        }).catch(() => {
+            resolve({});
         });
-    }
-
-    function translateKey(key) {
-        const parts = key.split('#');
-        let module;
-
-        if (parts.length > 1) {
-            module = parts[0];
-            key = parts[1];
-        }
-
-        return translateKeyFromModule(key, module);
-    }
-
-    function translateKeyFromModule(key, module) {
-        let dictionary = getDictionary(module, getCurrentLocale());
-        if (dictionary && dictionary[key]) {
-            return dictionary[key];
-        }
-
-        dictionary = getDictionary(module, fallbackCulture);
-        if (dictionary && dictionary[key]) {
-            return dictionary[key];
-        }
-
-        if (!dictionary || isEmpty(dictionary)) {
-            console.warn('Translation dictionary is empty.');
-        } else {
-            console.error(`Translation key is missing from dictionary: ${key}`);
-        }
-
-        return key;
-    }
-
-    function replaceAll(str, find, replace) {
-        return str.split(find).join(replace);
-    }
-
-    export function translate(key) {
-        let val = translateKey(key);
-        for (let i = 1; i < arguments.length; i++) {
-            val = replaceAll(val, '{' + (i - 1) + '}', arguments[i]);
-        }
-        return val;
-    }
-
-    export function translateHtml(html, module) {
-        html = html.default || html;
-
-        if (!module) {
-            module = defaultModule();
-        }
-        if (!module) {
-            throw new Error('module cannot be null or empty');
-        }
-
-        let startIndex = html.indexOf('${');
-        if (startIndex === -1) {
-            return html;
-        }
-
-        startIndex += 2;
-        const endIndex = html.indexOf('}', startIndex);
-        if (endIndex === -1) {
-            return html;
-        }
-
-        const key = html.substring(startIndex, endIndex);
-        const val = translateKeyFromModule(key, module);
-
-        html = html.replace('${' + key + '}', val);
-        return translateHtml(html, module);
-    }
-
-    let _defaultModule;
-    export function defaultModule(val) {
-        if (val) {
-            _defaultModule = val;
-        }
-        return _defaultModule;
-    }
-
-    updateCurrentCulture();
-
-    Events.on(userSettings, 'change', function (e, name) {
-        if (name === 'language' || name === 'datetimelocale') {
-            updateCurrentCulture();
-        }
     });
+}
+
+function translateKey(key) {
+    const parts = key.split('#');
+    let module;
+
+    if (parts.length > 1) {
+        module = parts[0];
+        key = parts[1];
+    }
+
+    return translateKeyFromModule(key, module);
+}
+
+function translateKeyFromModule(key, module) {
+    let dictionary = getDictionary(module, getCurrentLocale());
+    if (dictionary?.[key]) {
+        return dictionary[key];
+    }
+
+    dictionary = getDictionary(module, fallbackCulture);
+    if (dictionary?.[key]) {
+        return dictionary[key];
+    }
+
+    if (!dictionary || isEmpty(dictionary)) {
+        console.warn('Translation dictionary is empty.');
+    } else {
+        console.error(`Translation key is missing from dictionary: ${key}`);
+    }
+
+    return key;
+}
+
+export function translate(key) {
+    let val = translateKey(key);
+    for (let i = 1; i < arguments.length; i++) {
+        val = val.replaceAll('{' + (i - 1) + '}', arguments[i].toLocaleString(currentCulture));
+    }
+    return val;
+}
+
+export function translateHtml(html, module) {
+    html = html.default || html;
+
+    if (!module) {
+        module = defaultModule();
+    }
+    if (!module) {
+        throw new Error('module cannot be null or empty');
+    }
+
+    let startIndex = html.indexOf('${');
+    if (startIndex === -1) {
+        return html;
+    }
+
+    startIndex += 2;
+    const endIndex = html.indexOf('}', startIndex);
+    if (endIndex === -1) {
+        return html;
+    }
+
+    const key = html.substring(startIndex, endIndex);
+    const val = translateKeyFromModule(key, module);
+
+    html = html.replace('${' + key + '}', val);
+    return translateHtml(html, module);
+}
+
+let _defaultModule;
+export function defaultModule(val) {
+    if (val) {
+        _defaultModule = val;
+    }
+    return _defaultModule;
+}
+
+updateCurrentCulture();
+
+Events.on(userSettings, 'change', function (e, name) {
+    if (name === 'language' || name === 'datetimelocale') {
+        updateCurrentCulture();
+    }
+});
 
 export default {
     translate,
@@ -257,7 +296,8 @@ export default {
     getCurrentLocale,
     getCurrentDateTimeLocale,
     register,
-    updateCurrentCulture
+    updateCurrentCulture,
+    getIsRTL,
+    getIsElementRTL
 };
 
-/* eslint-enable indent */

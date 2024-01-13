@@ -1,6 +1,6 @@
 import { playbackManager } from './playback/playbackmanager';
 import * as userSettings from '../scripts/settings/userSettings';
-import { Events } from 'jellyfin-apiclient';
+import Events from '../utils/events.ts';
 import ServerConnections from './ServerConnections';
 
 let currentOwnerId;
@@ -86,7 +86,7 @@ document.addEventListener('viewshow', function (e) {
     const state = e.detail.state || {};
     const item = state.item;
 
-    if (item && item.ServerId) {
+    if (item?.ServerId) {
         loadThemeMedia(item);
         return;
     }

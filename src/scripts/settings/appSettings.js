@@ -1,5 +1,5 @@
-/* eslint-disable indent */
-import { AppStorage, Events } from 'jellyfin-apiclient';
+import Events from '../../utils/events.ts';
+import { toBoolean } from '../../utils/string.ts';
 
 class AppSettings {
     #getKey(name, userId) {
@@ -15,7 +15,7 @@ class AppSettings {
             this.set('enableAutoLogin', val.toString());
         }
 
-        return this.get('enableAutoLogin') !== 'false';
+        return toBoolean(this.get('enableAutoLogin'), true);
     }
 
     /**
@@ -28,7 +28,7 @@ class AppSettings {
             return this.set('enableGamepad', val.toString());
         }
 
-        return this.get('enableGamepad') === 'true';
+        return toBoolean(this.get('enableGamepad'), false);
     }
 
     enableSystemExternalPlayers(val) {
@@ -36,7 +36,7 @@ class AppSettings {
             this.set('enableSystemExternalPlayers', val.toString());
         }
 
-        return this.get('enableSystemExternalPlayers') === 'true';
+        return toBoolean(this.get('enableSystemExternalPlayers'), false);
     }
 
     enableAutomaticBitrateDetection(isInNetwork, mediaType, val) {
@@ -52,7 +52,7 @@ class AppSettings {
         if (isInNetwork && mediaType === 'Audio') {
             return true;
         } else {
-            return this.get(key) !== 'false';
+            return toBoolean(this.get(key), true);
         }
     }
 
@@ -70,7 +70,7 @@ class AppSettings {
             // return a huge number so that it always direct plays
             return 150000000;
         } else {
-            return parseInt(this.get(key) || '0') || 1500000;
+            return parseInt(this.get(key) || '0', 10) || 1500000;
         }
     }
 
@@ -80,7 +80,7 @@ class AppSettings {
         }
 
         const defaultValue = 320000;
-        return parseInt(this.get('maxStaticMusicBitrate') || defaultValue.toString()) || defaultValue;
+        return parseInt(this.get('maxStaticMusicBitrate') || defaultValue.toString(), 10) || defaultValue;
     }
 
     maxChromecastBitrate(val) {
@@ -89,7 +89,20 @@ class AppSettings {
         }
 
         val = this.get('chromecastBitrate1');
-        return val ? parseInt(val) : null;
+        return val ? parseInt(val, 10) : null;
+    }
+
+    /**
+     * Get or set 'Maximum video width'
+     * @param {number|undefined} val - Maximum video width or undefined.
+     * @return {number} Maximum video width.
+     */
+    maxVideoWidth(val) {
+        if (val !== undefined) {
+            return this.set('maxVideoWidth', val.toString());
+        }
+
+        return parseInt(this.get('maxVideoWidth') || '0', 10) || 0;
     }
 
     /**
@@ -107,7 +120,7 @@ class AppSettings {
 
     set(name, value, userId) {
         const currentValue = this.get(name, userId);
-        AppStorage.setItem(this.#getKey(name, userId), value);
+        localStorage.setItem(this.#getKey(name, userId), value);
 
         if (currentValue !== value) {
             Events.trigger(this, 'change', [name]);
@@ -115,10 +128,8 @@ class AppSettings {
     }
 
     get(name, userId) {
-        return AppStorage.getItem(this.#getKey(name, userId));
+        return localStorage.getItem(this.#getKey(name, userId));
     }
 }
-
-/* eslint-enable indent */
 
 export default new AppSettings();

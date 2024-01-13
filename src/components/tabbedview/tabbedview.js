@@ -1,8 +1,8 @@
-import backdrop from '../backdrop/backdrop';
+import { clearBackdrop } from '../backdrop/backdrop';
 import * as mainTabsManager from '../maintabsmanager';
 import layoutManager from '../layoutManager';
 import '../../elements/emby-tabs/emby-tabs';
-import { appRouter } from '../appRouter';
+import LibraryMenu from '../../scripts/libraryMenu';
 
 function onViewDestroy() {
     const tabControllers = this.tabControllers;
@@ -31,7 +31,7 @@ class TabbedView {
 
         const self = this;
 
-        let currentTabIndex = parseInt(params.tab || this.getDefaultTabIndex(params.parentId));
+        let currentTabIndex = parseInt(params.tab || this.getDefaultTabIndex(params.parentId), 10);
         this.initialTabIndex = currentTabIndex;
 
         function validateTabLoad(index) {
@@ -61,11 +61,11 @@ class TabbedView {
         }
 
         function onTabChange(e) {
-            const newIndex = parseInt(e.detail.selectedTabIndex);
+            const newIndex = parseInt(e.detail.selectedTabIndex, 10);
             const previousIndex = e.detail.previousIndex;
 
             const previousTabController = previousIndex == null ? null : self.tabControllers[previousIndex];
-            if (previousTabController && previousTabController.onPause) {
+            if (previousTabController?.onPause) {
                 previousTabController.onPause();
             }
 
@@ -87,13 +87,13 @@ class TabbedView {
 
     onResume() {
         this.setTitle();
-        backdrop.clearBackdrop();
+        clearBackdrop();
 
         const currentTabController = this.currentTabController;
 
         if (!currentTabController) {
             mainTabsManager.selectedTabIndex(this.initialTabIndex);
-        } else if (currentTabController && currentTabController.onResume) {
+        } else if (currentTabController?.onResume) {
             currentTabController.onResume({});
         }
     }
@@ -101,12 +101,13 @@ class TabbedView {
     onPause() {
         const currentTabController = this.currentTabController;
 
-        if (currentTabController && currentTabController.onPause) {
+        if (currentTabController?.onPause) {
             currentTabController.onPause();
         }
     }
+
     setTitle() {
-        appRouter.setTitle('');
+        LibraryMenu.setTitle('');
     }
 }
 
